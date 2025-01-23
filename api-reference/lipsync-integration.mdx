@@ -1,6 +1,6 @@
 ---
 title: "Integrating Lipsync API with Any TTS for Mascot Animation"
-sidebarTitle: "Lipsync Integration"
+sidebarTitle: "Integrating TTS & Lipsync"
 description: "Learn how to connect any TTS to our lipsync API for animating mascots."
 icon: 'lips'
 ---
@@ -19,13 +19,15 @@ Here's a high-level overview of the architecture and data flow:
 
 This demo showcases the integration of our lipsync API integrated with Elevenlabs to animate a mascot. You can see how the audio and visemes work together to bring the mascot to life for any given text.
 
+<Note>This example server route waits for the full completion of audio, as it is a basic example. For faster text-to-playback, you can implement playback on a client as soon as the API returns the first viseme/lipsync data chunk</Note>
+
 <iframe
   src="https://mascotbot-examples.vercel.app/voice-over"
   width="100%"
   height="500"
   style={{ border: "none" }}
   title="Mascotbot Voice Over Example"
-  allow="autoplay"
+  allow="autoplay; encrypted-media; microphone; clipboard-write"
 ></iframe>
 
 ## Step-by-Step Implementation
@@ -92,7 +94,7 @@ export async function POST(req: NextRequest) {
 
 ### 2. Client-Side Integration
 
-On the client side, use the server route to fetch audio and visemes, then play them using a mascot animation library.
+On the client side, use the server route to fetch audio and visemes, then play them using a mascotbot SDK animation library.
 
 ```typescript
 import { useRef, useState } from "react";
