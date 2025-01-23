@@ -65,7 +65,31 @@ paths:
                     error: {"message":"Error processing chunk 5","chunk_id":5}
         '400':
           description: Invalid request (missing or invalid audio data)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Invalid audio data"
         '403':
           description: Invalid API key
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Invalid API key"
         '500':
           description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Internal server error"

@@ -3,17 +3,17 @@
   "name": "Starter Kit",
   "openapi": "api-reference/openapi.yaml",
   "logo": {
-    "dark": "/logo/dark.svg",
-    "light": "/logo/light.svg"
+    "dark": "logo/mascotbot_logo_light.svg",
+    "light": "logo/mascotbot_logo_dark.svg"
   },
   "favicon": "/favicon.svg",
   "colors": {
-    "primary": "#0D9373",
-    "light": "#07C983",
-    "dark": "#0D9373",
+    "primary": "#000000",
+    "light": "#FFFFFF",
+    "dark": "#000000",
     "anchors": {
-      "from": "#0D9373",
-      "to": "#07C983"
+      "from": "#000000",
+      "to": "#FFFFFF"
     }
   },
   "topbarLinks": [
@@ -70,12 +70,6 @@
       ]
     },
     {
-      "group": "API Documentation",
-      "pages": [
-        "api-reference/introduction"
-      ]
-    },
-    {
       "group": "Endpoints",
       "pages": [
         "api-reference/endpoint/post"
@@ -83,8 +77,7 @@
     }
   ],
   "footerSocials": {
-    "x": "https://x.com/mintlify",
-    "github": "https://github.com/mintlify",
+    "x": "https://x.com/mascot_bots",
     "linkedin": "https://linkedin.com/company/mintlify"
   }
 }
