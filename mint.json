@@ -1,6 +1,6 @@
 {
   "$schema": "https://mintlify.com/schema.json",
-  "name": "Starter Kit",
+  "name": "Mascotbot Documentation",
   "openapi": "api-reference/openapi.yaml",
   "logo": {
     "dark": "logo/mascotbot_logo_light.svg",
@@ -19,12 +19,12 @@
   "topbarLinks": [
     {
       "name": "Support",
-      "url": "mailto:hi@mintlify.com"
+      "url": "mailto:support@mmascot.bot"
     }
   ],
   "topbarCtaButton": {
-    "name": "Dashboard",
-    "url": "https://dashboard.mintlify.com"
+    "name": "Main Website",
+    "url": "https://mascot.bot"
   },
   "tabs": [
     {
