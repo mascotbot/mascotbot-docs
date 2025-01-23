@@ -19,7 +19,7 @@ Here's a high-level overview of the architecture and data flow:
 
 This demo showcases the integration of our lipsync API integrated with Elevenlabs to animate a mascot. You can see how the audio and visemes work together to bring the mascot to life for any given text.
 
-<Note>This example server route waits for the full completion of audio, as it is a basic example. For faster text-to-playback, you can implement playback on a client as soon as the API returns the first viseme/lipsync data chunk</Note>
+<Note>This example server route waits for the full completion of both audio and lipsync, as it is a basic example. For faster text-to-playback, you can implement playback on a client as soon as the API returns the first viseme/lipsync and audio data chunks</Note>
 
 <iframe
   src="https://mascotbot-examples.vercel.app/voice-over"
