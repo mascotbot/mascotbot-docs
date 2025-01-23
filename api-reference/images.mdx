@@ -1,0 +1,137 @@
+---
+title: "Integrating Lipsync with Any TTS for Mascot Animation"
+sidebarTitle: "Lipsync Integration"
+description: "Learn how to connect any TTS to our lipsync API for animating mascots."
+---
+
+In this guide, we'll explore how developers can use our lipsync endpoint to connect any Text-to-Speech (TTS) service and animate a mascot using our lipsync/visemes API. This involves setting up a server route to orchestrate the TTS and lipsync API and then playing it on the front end.
+
+## Architecture Overview
+
+Here's a high-level overview of the architecture and data flow:
+
+1. **Client-Side**: The user inputs text, which is sent to the server.
+2. **Server-Side**: The server processes the text using a TTS service to generate audio and sends it to the lipsync API to get visemes.
+3. **Client-Side**: The audio and visemes are sent back to the client, where they are used to animate the mascot.
+
+## Mascotbot Voice Over Demo
+
+This demo showcases the integration of our lipsync API integrated with Elevenlabs to animate a mascot. You can see how the audio and visemes work together to bring the mascot to life.
+
+<iframe
+  src="https://mascotbot-examples.vercel.app/voice-over"
+  width="100%"
+  height="500"
+  style={{ border: "none" }}
+  title="Mascotbot Voice Over Example"
+  allow="autoplay"
+></iframe>
+
+## Step-by-Step Implementation
+
+### 1. Setting Up the Server Route
+
+Create a server route to handle the TTS and lipsync API requests. Here's a simplified example using Node.js:
+
+```typescript
+import { NextRequest, NextResponse } from "next/server";
+import { ElevenLabsClient } from "elevenlabs";
+import { createWavBufferFromPCM } from "./utils";
+
+const ELEVENLABS_API_KEY = "your-elevenlabs-api-key";
+const VOICE_ID = "your-voice-id";
+const MASCOTBOT_API_KEY = "your-mascotbot-api-key";
+
+const elevenlabs = new ElevenLabsClient({
+  apiKey: ELEVENLABS_API_KEY,
+});
+
+export async function POST(req: NextRequest) {
+  try {
+    const { text } = await req.json();
+
+    const rawPcmBase64 = (await elevenlabs.textToSpeech.convertWithTimestamps(VOICE_ID, {
+      output_format: "pcm_16000",
+      text,
+    })) as { audio_base64: string };
+
+    const pcmBuffer = Buffer.from(rawPcmBase64.audio_base64, "base64");
+    const wavBuffer = createWavBufferFromPCM(pcmBuffer, 16000, 16, 1);
+
+    const response = await fetch("https://api.mascot.bot/v1/visemes", {
+      method: "POST",
+      body: JSON.stringify({
+        audio: wavBuffer.toString("base64"),
+        sample_rate: 16000,
+      }),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${MASCOTBOT_API_KEY}`,
+      },
+    });
+
+    const visemes = await response.json();
+
+    return NextResponse.json({
+      audio: wavBuffer.toString("base64"),
+      visemes,
+    });
+  } catch (error) {
+    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
+  }
+}
+```
+
+### 2. Client-Side Integration
+
+On the client side, use the server route to fetch audio and visemes, then play them using a mascot animation library.
+
+```typescript
+import { useRef, useState } from "react";
+import { useMascotPlayback } from "@mascotbot-sdk/react";
+import { Button, Textarea } from "@mascotbot/ui";
+
+const API_DOMAIN = "https://your-api-domain.com";
+
+export default function VoiceOverSidebar() {
+  const mascotPlayback = useMascotPlayback();
+  const [text, setText] = useState<string>("");
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  return (
+    <div>
+      <audio ref={audioRef} playsInline />
+      <Textarea value={text} onChange={({ target }) => setText(target.value)} />
+      <Button
+        onClick={async () => {
+          const response = await fetch(`${API_DOMAIN}/api/voice-over`, {
+            method: "POST",
+            body: JSON.stringify({ text }),
+          });
+
+          const { audio, visemes } = await response.json();
+          const audioBlob = new Blob([audio], { type: "audio/wav" });
+          const audioUrl = URL.createObjectURL(audioBlob);
+
+          mascotPlayback.add(visemes);
+
+          if (audioRef.current) {
+            audioRef.current.src = audioUrl;
+            audioRef.current.oncanplay = () => {
+              mascotPlayback.play();
+              audioRef.current.play();
+            };
+            audioRef.current.onended = () => mascotPlayback.reset();
+          }
+        }}
+      >
+        Play
+      </Button>
+    </div>
+  );
+}
+```
+
+## Conclusion
+
+By following this guide, you can integrate any TTS service with our lipsync API to animate mascots on your platform. This setup allows for dynamic and engaging user experiences by synchronizing audio with visual animations.

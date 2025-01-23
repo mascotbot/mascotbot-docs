@@ -74,6 +74,12 @@
       "pages": [
         "api-reference/endpoint/post"
       ]
+    },
+    {
+      "group": "Integration Examples",
+      "pages": [
+        "api-reference/images"
+      ]
     }
   ],
   "footerSocials": {
