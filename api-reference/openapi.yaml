@@ -9,8 +9,8 @@ components:
       type: http
       scheme: bearer
 servers:
-  - url: http://localhost:3333
-    description: Local development server
+  - url: https://api.mascot.bot
+    description: Production server
 paths:
   /v1/visemes:
     post:
