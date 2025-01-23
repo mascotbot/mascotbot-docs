@@ -1,0 +1,71 @@
+openapi: 3.1.0
+info:
+  title: Viseme Prediction API
+  version: 1.0.0
+  description: API for processing audio and streaming viseme predictions
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+servers:
+  - url: http://localhost:3333
+    description: Local development server
+paths:
+  /v1/visemes:
+    post:
+      summary: Process audio and stream viseme predictions
+      description: |
+        Takes base64 encoded audio and streams viseme predictions using Server-Sent Events (SSE).
+        Requires valid API key.
+      operationId: getVisemes
+      security:
+        - BearerAuth: []
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - audio
+              properties:
+                audio:
+                  type: string
+                  description: Base64 encoded audio data
+                  example: UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=
+                sample_rate:
+                  type: integer
+                  description: Audio sample rate in Hz
+                  default: 16000
+                  example: 16000
+      responses:
+        '200':
+          description: |
+            Successful response streams viseme predictions using Server-Sent Events.
+            Each event contains viseme data for a processed audio chunk.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: |
+                  Server-Sent Events stream with the following format:
+                  - Each event starts with "data: " prefix followed by JSON
+                  - Example normal event:
+                    data: {"visemes":[...],"chunk_progress":"1/10","chunk_duration_ms":100}
+                  - Example error event:
+                    error: {"message":"Error message","chunk_id":5}
+              examples:
+                normalEvent:
+                  value: |
+                    data: '{"visemes":[{"visemeId":1,"offset":0.1},{"visemeId":2,"offset":0.2}],"chunk_progress":"1/10","chunk_duration_ms":100}'
+                errorEvent:
+                  value: |
+                    error: {"message":"Error processing chunk 5","chunk_id":5}
+        '400':
+          description: Invalid request (missing or invalid audio data)
+        '403':
+          description: Invalid API key
+        '500':
+          description: Internal server error
