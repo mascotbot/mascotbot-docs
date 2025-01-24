@@ -16,7 +16,7 @@ paths:
     post:
       summary: Process audio and stream viseme predictions
       description: |
-        Takes base64 encoded audio and streams viseme predictions using Server-Sent Events (SSE).
+        Takes base64 encoded audio and streams viseme (mouth shapes) predictions using Server-Sent Events (SSE).
         Requires valid API key.
       operationId: getVisemes
       security:
