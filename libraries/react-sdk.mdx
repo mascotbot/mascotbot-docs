@@ -1,0 +1,123 @@
+---
+title: "Mascotbot React SDK Documentation"
+sidebarTitle: "React SDK"
+description: "Learn how to install and use the Mascotbot SDK with React."
+icon: 'react'
+---
+
+## Introduction
+
+The MascotBOT SDK provides a set of tools and components to integrate interactive mascots into your React applications. This documentation will guide you through the installation process and explain the main mechanisms and hooks available in the SDK.
+
+## Installation
+
+To install the MascotBOT SDK, you need to add the package to your project. You can do this using the following command:
+
+```bash
+pnpm install mascotbot-sdk-react-0.1.0.tgz
+```
+<Note>You'll get the latest version of our SDK with integration examples once you subscribe to one of our plans</Note>
+
+Ensure that you have the required peer dependencies installed:
+
+- `@rive-app/canvas`
+- `@rive-app/react-canvas`
+- `react`
+- `react-dom`
+
+## Setup
+
+### 1. Import and Wrap with `MascotProvider`
+
+To use the SDK, wrap your application with the `MascotProvider` component. This component requires an API key to function.
+
+```jsx
+import { MascotProvider } from "@mascotbot-sdk/react";
+
+function App() {
+  return (
+    <MascotProvider apiKey="your_api_key">
+      {/* Your application components */}
+    </MascotProvider>
+  );
+}
+```
+
+### 2. Create a Rive Instance
+
+Use the `useRive` hook to create a Rive instance. This instance will manage the animations and state machines for your mascot.
+
+```jsx
+import { useRive } from "@rive-app/react-canvas";
+
+const rive = useRive({
+  src: "your_rive_file_url",
+  artboard: "YourArtboard",
+  animations: "YourAnimation",
+  stateMachines: "YourStateMachine",
+  autoplay: true,
+});
+```
+
+### 3. Use `MascotClient`
+
+The `MascotClient` component connects your Rive instance with the MascotBOT SDK.
+
+```jsx
+import { MascotClient } from "@mascotbot-sdk/react";
+
+<MascotClient rive={rive}>
+  <YourMascotComponent />
+</MascotClient>
+```
+
+## Hooks
+
+### `useMascot`
+
+The `useMascot` hook provides access to the Rive component and its loading state.
+
+```jsx
+import { useMascot } from "@mascotbot-sdk/react";
+
+const { RiveComponent, isRiveLoaded } = useMascot();
+```
+
+### `useMascotPlayback`
+
+The `useMascotPlayback` hook allows you to control the playback of animations and manage visemes and stress levels.
+
+```jsx
+import { useMascotPlayback } from "@mascotbot-sdk/react";
+
+const playback = useMascotPlayback();
+playback.play();
+playback.pause();
+```
+
+## Handling Visemes and Audio Playback
+
+To create a synchronized animation and audio experience, you can use the `playback.add` method to add visemes and audio. This can be done in various ways, such as fetching from a server, generating in real-time, or any other method suitable for your application.
+
+### Adding Visemes
+
+Visemes are visual representations of phonemes. You can add them to the playback to synchronize with the audio.
+
+```jsx
+const visemes = /* Obtain visemes from your source */;
+playback.add(visemes);
+```
+
+### Adding Audio
+
+For speech playback, you need to provide an audio source. This can be done by setting the audio source dynamically.
+
+```jsx
+const audioElement = /* Reference to your audio element */;
+audioElement.src = "your_audio_source";
+audioElement.play();
+```
+
+## Conclusion
+
+The MascotBOT SDK offers a flexible and powerful way to integrate mascots into your React applications. By following the setup instructions and utilizing the provided hooks, you can create engaging and interactive experiences for your users. For more detailed examples and integration guides, please refer to the separate article on production and integration examples.

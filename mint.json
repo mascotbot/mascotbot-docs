@@ -36,7 +36,7 @@
     {
       "name": "Documentation",
       "icon": "book-open-cover",
-      "url": "https://documentation.mascot.bot/"
+      "url": "https://docs.mascot.bot/"
     },
     {
       "name": "Community",
@@ -53,20 +53,13 @@
     {
       "group": "Get Started",
       "pages": [
-        "introduction",
-        "quickstart",
-        "development"
+        "introduction"
       ]
     },
     {
-      "group": "Essentials",
+      "group": "Libraries",
       "pages": [
-        "essentials/markdown",
-        "essentials/code",
-        "essentials/images",
-        "essentials/settings",
-        "essentials/navigation",
-        "essentials/reusable-snippets"
+        "libraries/react-sdk"
       ]
     },
     {
@@ -83,7 +76,6 @@
     }
   ],
   "footerSocials": {
-    "x": "https://x.com/mascot_bots",
-    "linkedin": "https://linkedin.com/company/mintlify"
+    "x": "https://x.com/mascot_bots"
   }
 }
