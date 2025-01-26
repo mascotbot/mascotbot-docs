@@ -13,30 +13,57 @@ The MascotBOT SDK provides a set of tools and components to integrate interactiv
 
 To install the MascotBOT SDK, you need to add the package to your project. You can do this using the following command:
 
-```bash
-pnpm install mascotbot-sdk-react-0.1.0.tgz
+<CodeGroup>
+
+```bash npm
+npm install ./mascotbot-sdk-react-0.1.0.tgz
 ```
+
+```bash yarn
+yarn add ./mascotbot-sdk-react-0.1.0.tgz
+```
+
+```bash pnpm
+pnpm add ./mascotbot-sdk-react-0.1.0.tgz
+```
+
+</CodeGroup>
+
 <Note>You'll get the latest version of our SDK with integration examples once you subscribe to one of our plans</Note>
 
 Ensure that you have the required peer dependencies installed:
 
-- `@rive-app/canvas`
-- `@rive-app/react-canvas`
-- `react`
-- `react-dom`
+<CodeGroup>
+
+```bash npm
+npm install react react-dom
+npm install @rive-app/canvas @rive-app/react-canvas
+```
+
+```bash yarn
+yarn add react react-dom
+yarn add @rive-app/canvas @rive-app/react-canvas
+```
+
+```bash pnpm
+pnpm add react react-dom
+pnpm add @rive-app/canvas @rive-app/react-canvas
+```
+
+</CodeGroup>
 
 ## Setup
 
 ### 1. Import and Wrap with `MascotProvider`
 
-To use the SDK, wrap your application with the `MascotProvider` component. This component requires an API key to function.
+To use the SDK, wrap your application with the `MascotProvider` component.
 
 ```jsx
 import { MascotProvider } from "@mascotbot-sdk/react";
 
 function App() {
   return (
-    <MascotProvider apiKey="your_api_key">
+    <MascotProvider>
       {/* Your application components */}
     </MascotProvider>
   );
@@ -75,17 +102,17 @@ import { MascotClient } from "@mascotbot-sdk/react";
 
 ### `useMascot`
 
-The `useMascot` hook provides access to the Rive component and its loading state.
+The `useMascot` hook provides access to the Rive instance and Rive component.
 
 ```jsx
 import { useMascot } from "@mascotbot-sdk/react";
 
-const { RiveComponent, isRiveLoaded } = useMascot();
+const { rive, RiveComponent } = useMascot();
 ```
 
 ### `useMascotPlayback`
 
-The `useMascotPlayback` hook allows you to control the playback of animations and manage visemes and stress levels.
+The `useMascotPlayback` hook allows you to control the playback of animations and manage visemes.
 
 ```jsx
 import { useMascotPlayback } from "@mascotbot-sdk/react";
@@ -97,7 +124,7 @@ playback.pause();
 
 ## Handling Visemes and Audio Playback
 
-To create a synchronized animation and audio experience, you can use the `playback.add` method to add visemes and audio. This can be done in various ways, such as fetching from a server, generating in real-time, or any other method suitable for your application.
+To create a synchronized animation and audio experience, you can use the `playback.add` method to add visemes. This can be done in various ways, such as fetching from a server, generating in real-time, or any other method suitable for your application.
 
 ### Adding Visemes
 
