@@ -1,0 +1,200 @@
+---
+title: "Mascotbot React SDK Documentation"
+sidebarTitle: "Mascot Call"
+description: "Learn how to install and use the Mascotbot SDK with React."
+---
+
+MascotCall encapsulates the core call-handling logic. It is designed to work in tandem with [MascotClient](https://docs.mascot.bot/libraries/react-sdk) and the underlying voice client from the Pipecat platform. For a general integration of the Mascotbot React SDK, see the [Mascotbot React SDK Documentation](https://docs.mascot.bot/libraries/react-sdk).
+
+---
+
+## Overview
+
+The `MascotCall` component enables you to provide real-time call interaction features in your application. It offers you:
+
+- A call “start” mechanism that connects to the backend via an API endpoint.
+- A control interface exposing start/end call and toggle audio (mute/unmute) buttons.
+- Integrated TTS support—for example, using the ElevenLabs engine.
+- Full integration with a Rive animation for your mascot via the `MascotRive` component.
+
+Internally, `MascotCall` uses the Pipecat voice client alongside media handling and state management hooks from `@mascotbot-sdk/react`.
+
+---
+
+## Installation
+
+First, ensure you have installed the Mascotbot React SDK along with its peer dependencies:
+
+```bash
+npm install ./mascotbot-sdk-react-0.1.0.tgz
+```
+
+For full installation and setup details, please see the [Mascotbot React SDK Docs](https://docs.mascot.bot/libraries/react-sdk).
+
+---
+
+## Usage
+
+`MascotCall` works as a child of the `MascotClient` component and must be wrapped in a valid client context. The typical integration flow is as follows:
+
+1. **Load Your Mascot Animation:**  
+   Create and load your Rive instance using the `useRive` hook (from `@rive-app/react-canvas`).
+
+2. **Wrap with MascotClient:**  
+   Pass your Rive instance and any custom state-machine input names (e.g. `"thumbs_up"`) to `MascotClient`.
+
+3. **Integrate MascotCall:**  
+   Within the `MascotClient`, add the `MascotCall` component. Provide your API endpoint and TTS configuration (if needed) as props. Use the render prop function to access call controls and state.
+
+---
+
+## Props
+
+The `MascotCall` component accepts the following props:
+
+- **apiUrl (string, required):**  
+  The URL of your backend API endpoint that handles call signaling.
+
+- **tts (object, optional):**  
+  Configures Text-To-Speech (TTS) with the following properties:
+  - `engine` (string): The TTS engine (e.g. `"elevenlabs"`, `"cartesia"`, or `"kokoro"`).
+  - `voice` (string): The identifier for the selected voice.
+
+- **onStateChange (function, optional):**  
+  Callback that is invoked on transport state changes (e.g. `"disconnected"`, `"connecting"`, `"ready"`).
+
+- **children (function or React node, required):**  
+  A render prop that provides the control props:
+  - `startProps`: Props to trigger a start call action.
+  - `endProps`: Props to trigger the call-end action.
+  - `muteProps`: Props to toggle mute/unmute.
+  - `state`: The current transport state.
+  - `muted`: Boolean indicating if the mic is muted.
+
+---
+
+## TTS Configuration
+
+Within the `tts` prop you can define the TTS engine and voice settings. For example:
+
+```jsx
+tts={{
+  engine: "elevenlabs",
+  voice: "your-voice-id"
+}}
+```
+
+You can adjust these settings based on your subscription and the supported providers on your backend.
+
+---
+
+## Code Example
+
+Below is a complete integration example for `MascotCall`. This example shows how to set up your Rive instance, wrap your app with `MascotClient`, and integrate the `MascotCall` component with a custom UI using its render prop.
+
+```jsx
+import { MascotCall, MascotClient, MascotRive } from "@mascotbot-sdk/react";
+import { Alignment, Fit, Layout, useRive } from "@rive-app/react-canvas";
+
+// Replace with your API endpoint.
+const MASCOT_CALL_API_URL = "your-endpoint-domain";
+
+export default function Call() {
+  const rive = useRive(
+    {
+      src: "your_rive_file_url",
+      artboard: "YourArtboard",
+      animations: "YourAnimation",
+      stateMachines: "YourStateMachine",
+      autoplay: true,
+      layout: new Layout({
+        fit: Fit.FitHeight,
+        alignment: Alignment.Center,
+      }),
+    },
+    {
+      shouldResizeCanvasToContainer: true,
+    }
+  );
+
+  return (
+    <MascotClient rive={rive} inputs={["thumbs_up"]}>
+      <div style={{ position: "relative", height: "100%" }}>
+        <MascotCall
+          apiUrl={MASCOT_CALL_API_URL}
+          tts={{ engine: "elevenlabs", voice: "your-voice-id" }}
+          onStateChange={(state) => console.log("Call state:", state)}
+          debug
+        >
+          {(provided) => (
+            <>
+              <MascotRive
+                onClick={({ inputs }) => {
+                  inputs?.thumbs_up && inputs.thumbs_up.fire();
+                }}
+              />
+
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: 0,
+                  insetInline: 0,
+                  paddingBottom: 16,
+                  zIndex: 50,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    rowGap: 6,
+                    width: "max-content",
+                    marginInline: "auto",
+                  }}
+                >
+                  {provided.state === "disconnected" ? (
+                    <button {...provided.startProps}>Start</button>
+                  ) : provided.state === "ready" ? (
+                    <button
+                      {...provided.endProps}
+                      style={{ backgroundColor: "red", color: "white", borderColor: "red" }}
+                    >
+                      End
+                    </button>
+                  ) : (
+                    <button
+                      style={{ opacity: 0.5, pointerEvents: "none" }}
+                    >
+                      Connecting…
+                    </button>
+                  )}
+                  <button {...provided.muteProps}>
+                    {provided.muted ? "Unmute" : "Mute"}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </MascotCall>
+
+        <div
+          style={{
+            position: "absolute",
+            bottom: 0,
+            insetInline: 0,
+            height: 150,
+            background:
+              "linear-gradient(to top, rgb(255, 255, 255) 15%, rgba(255, 255, 255, 0))",
+          }}
+        />
+      </div>
+    </MascotClient>
+  );
+}
+```
+
+---
+
+With this setup, your application will be equipped with interactive voice call features integrated alongside your Mascot’s animation and TTS capabilities.
+
+For more details and advanced configuration options, consult the [Mascotbot React SDK documentation](https://docs.mascot.bot/libraries/react-sdk) and the relevant source files in the repository.
