@@ -7,9 +7,24 @@ icon: 'lips'
 
 In this guide, we'll explore how developers can use our lipsync endpoint to connect any Text-to-Speech (TTS) service and animate a mascot using our lipsync/visemes API. This involves setting up a server route to orchestrate the TTS and lipsync API and then playing it on the front end.
 
-## Architecture Overview
+## Elevenlabs Voice Over Integration
 
-Here's a high-level overview of the architecture and data flow:
+This demo shows how to use the lipsync API with Elevenlabs' TTS service to animate a mascot. The integration synchronizes audio and viseme data, bringing the mascot to life with any text input. Below is an interactive example of this integration so you could try it in acion.
+
+<iframe
+  src="https://mascotbot-examples.vercel.app/voice-over"
+  width="100%"
+  height="700"
+  style={{ border: "none", borderRadius: "8px", overflow: "auto", touchAction: "pan-y" }}
+  title="Mascotbot Voice Over Example"
+  allow="autoplay; encrypted-media; microphone; clipboard-write"
+></iframe>
+
+<Note>This example server route waits for the full completion of both audio and lipsync, as it is a basic example. For faster text-to-playback, you can implement playback on a client as soon as the API returns the first viseme/lipsync and audio data chunks</Note>
+
+## How this demo works
+
+Here's a high-level overview of the system and data flow:
 
 1. **Client-Side**: The user inputs text, which is sent to the server.
 2. **Server-Side**: The server processes the text using a TTS service to generate audio and sends it to the lipsync API to get visemes.
@@ -25,21 +40,6 @@ Here's a high-level overview of the architecture and data flow:
   src="/images/lipsync_dark.svg"
   alt="Lipsync Dark"
 />
-
-## Mascotbot Voice Over Demo
-
-This demo showcases the integration of our lipsync API integrated with Elevenlabs to animate a mascot. You can see how the audio and visemes work together to bring the mascot to life for any given text.
-
-<Note>This example server route waits for the full completion of both audio and lipsync, as it is a basic example. For faster text-to-playback, you can implement playback on a client as soon as the API returns the first viseme/lipsync and audio data chunks</Note>
-
-<iframe
-  src="https://mascotbot-examples.vercel.app/voice-over"
-  width="100%"
-  height="700"
-  style={{ border: "none", borderRadius: "8px", overflow: "auto", touchAction: "pan-y" }}
-  title="Mascotbot Voice Over Example"
-  allow="autoplay; encrypted-media; microphone; clipboard-write"
-></iframe>
 
 ## Step-by-Step Implementation
 
