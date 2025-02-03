@@ -57,10 +57,22 @@
       ]
     },
     {
-      "group": "React SDK",
+      "group": "Libraries",
       "pages": [
-        "libraries/react-sdk",
-        "libraries/mascot-call"
+        {
+          "group": "React",
+          "icon": "react",
+          "pages": [
+            "libraries/react-sdk",
+            "libraries/mascot-call"
+          ]
+        }
+      ]
+    },
+    {
+      "group": "Ready-made Mascots",
+      "pages": [
+        "mascots/ready-to-use-mascots"
       ]
     },
     {
