@@ -193,60 +193,6 @@ export default function Call() {
 }
 ```
 
----
-
-## Troubleshooting
-
-### Module Resolution Issues in Next.js Pages Router
-
-If you encounter errors like:
-
-```bash
-SyntaxError: Named export 'X' not found. The requested module '@rive-app/react-canvas' is a CommonJS module...
-```
-
-This occurs because Next.js Pages Router has stricter module resolution rules compared to App Router. To fix this:
-
-1. Add `@mascotbot-sdk/react` to your `next.config.js`:
-
-```js
-/** @type {import("next").NextConfig} */
-const nextConfig = {
-  transpilePackages: ["@mascotbot-sdk/react"]
-}
-module.exports = nextConfig
-```
-
-2. If you're still seeing issues, try clearing your Next.js cache:
-
-```bash
-rm -rf .next
-```
-
-### Common Issues
-
-#### Transport State Stuck on "Connecting"
-
-If the call state remains in "connecting":
-- Check that your `apiUrl` is correct and accessible
-- Ensure your browser has microphone permissions
-- Check browser console for any WebRTC-related errors
-
-#### Audio Issues
-
-If you're experiencing audio problems:
-1. Check microphone permissions in your browser
-2. Verify that no other application is using the microphone
-3. Try refreshing the page to reset WebRTC connections
-
-#### Animation Not Playing
-
-If the Rive animation isn't working:
-1. Verify your Rive file URL is correct
-2. Check that artboard and animation names match your Rive file
-
----
-
 With this setup, your application will be equipped with interactive voice call features integrated alongside your Mascot’s animation and TTS capabilities.
 
 For more details and advanced configuration options, consult the [Mascotbot React SDK documentation](react-sdk) and the relevant source files in the repository.
