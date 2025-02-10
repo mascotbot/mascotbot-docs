@@ -64,7 +64,8 @@
           "icon": "react",
           "pages": [
             "libraries/react-sdk",
-            "libraries/mascot-call"
+            "libraries/mascot-call",
+            "libraries/react-troubleshooting"
           ]
         }
       ]
