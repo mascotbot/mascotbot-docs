@@ -121,6 +121,22 @@ playback.play();
 playback.pause();
 ```
 
+#### Controlling Speaking State
+
+By default, the mascot's `is_speaking` state is automatically set to `true` while it's speaking and set to `false` when it stops. You can control this behavior by passing options to the `useMascotPlayback` hook:
+
+```jsx
+import { useMascotPlayback } from "@mascotbot-sdk/react";
+
+// Default behavior - automatically set is_speaking state to true when speaking
+const playback = useMascotPlayback();
+
+// Disable automatic is_speaking state changes
+const playback = useMascotPlayback({ setSpeakingState: false });
+```
+
+The `setSpeakingState` option allows you to disable the automatic management of the `is_speaking` state, giving you manual control over when and how the speaking state is set.
+
 ## Handling Visemes and Audio Playback
 
 To create a synchronized animation and audio experience, you can use the `playback.add` method to add visemes. This can be done in various ways, such as fetching from a server, generating in real-time, or any other method suitable for your application.
