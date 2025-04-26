@@ -1,0 +1,224 @@
+---
+title: "Mascotbot React Native SDK Documentation"
+sidebarTitle: "SDK Introduction"
+description: "Learn how to install and use the Mascotbot SDK with React Native."
+---
+
+## Introduction
+
+The MascotBOT SDK provides a set of tools and components to integrate interactive mascots into your React Native applications. This documentation will guide you through the installation process and explain the main mechanisms and hooks available in the SDK.
+
+## Installation
+
+To install the MascotBOT SDK, you need to add the package to your project. You can do this using the following command:
+
+<CodeGroup>
+
+```bash npm
+npm install ./mascotbot-react-native-0.1.3-preview.3.tgz
+```
+
+```bash yarn
+yarn add ./mascotbot-react-native-0.1.3-preview.3.tgz
+```
+
+```bash pnpm
+pnpm add ./mascotbot-react-native-0.1.3-preview.3.tgz
+```
+
+</CodeGroup>
+
+<Note>
+  You'll get the latest version of our SDK with integration examples once you
+  subscribe to one of our plans
+</Note>
+
+Ensure that you have the required peer dependencies installed:
+
+<CodeGroup>
+
+```bash npm
+npm install expo expo-av expo-file-system rive-react-native
+```
+
+```bash yarn
+yarn add expo expo-av expo-file-system rive-react-native
+```
+
+```bash pnpm
+pnpm add expo expo-av expo-file-system rive-react-native
+```
+
+</CodeGroup>
+
+## Setup
+
+### 1. Import and Wrap with `MascotProvider`
+
+To use the SDK, wrap your application with the `MascotProvider` component.
+
+```jsx
+import { MascotProvider } from "@mascotbot/react-native";
+
+function App() {
+  return <MascotProvider>{/* Your application components */}</MascotProvider>;
+}
+```
+
+### 2. Create a Rive Instance
+
+To use animated mascots, you'll need to integrate with a Rive component:
+For reference see the official Rive documentation to loading files [here](https://rive.app/docs/runtimes/react-native/loading-rive-to-expo)
+
+```jsx
+import { MascotClient, MascotRive } from "@mascotbot/react-native";
+
+function MyApp() {
+  const RiveComponent = forwardRef((props, ref) => {
+    return (
+      <Rive
+        ref={ref}
+        style={{ width: "100%", height: 300 }}
+        url="your_rive_file_url"
+        autoplay={true}
+      />
+    );
+  });
+  return (
+    <MascotClient RiveComponent={RiveComponent}>
+      <MascotRive />
+    </MascotClient>
+  );
+}
+```
+
+## Hooks
+
+### `useMascot`
+
+The `useMascot` hook provides access to the Rive instance and Rive component.
+
+```jsx
+import { useMascot } from "@mascotbot/react-native";
+
+const { rive, RiveComponent } = useMascot();
+```
+
+### `useMascotPlayback`
+
+The `useMascotPlayback` hook allows you to control the playback of animations and manage visemes.
+
+```jsx
+import { useMascotPlayback } from "@mascotbot/react-native";
+
+const playback = useMascotPlayback();
+playback.add();
+playback.play();
+playback.reset();
+```
+
+## Handling Visemes and Audio Playback
+
+To create a synchronized animation and audio experience, you can use the `playback.add` method to add visemes. This can be done in various ways, such as fetching from a server, generating in real-time, or any other method suitable for your application.
+
+### Adding Visemes
+
+Visemes are visual representations of phonemes. You can add them to the playback to synchronize with the audio.
+
+```jsx
+const visemes = /* Obtain visemes from your source */;
+playback.add(visemes);
+```
+
+### Controlling Speaking State
+
+By default, the mascot's `is_speaking` state is automatically set to `true` while it's speaking and set to `false` when it stops. You can control this behavior by passing options to the `useMascotPlayback` hook:
+
+```jsx
+import { useMascotPlayback } from "@mascotbot/react-native";
+
+// Default behavior - automatically set is_speaking state to true when speaking
+const playback = useMascotPlayback();
+
+// Disable automatic is_speaking state changes
+const playback = useMascotPlayback({ setSpeakingState: false });
+```
+
+The `setSpeakingState` option allows you to disable the automatic management of the `is_speaking` state, giving you manual control over when and how the speaking state is set.
+
+
+## API Reference
+
+### Components
+
+#### `<MascotProvider>`
+
+Root provider for the Mascot library.
+
+#### `<MascotClient>`
+
+Provides Rive integration capabilities.
+
+**Props:**
+
+- `RiveComponent`: Required. The Rive component implementation to use
+- `children`: React nodes
+
+#### `<MascotRive>`
+
+Displays the animated mascot.
+
+**Props:**
+
+- `onPress`: Function called when the mascot is clicked
+- Additional props are passed to the underlying Rive component
+
+### Hooks
+
+#### `useMascot()`
+
+Provides access to the mascot context.
+
+#### `useMascotSpeech(options)`
+
+Handles speech synthesis and animation.
+
+**Options:**
+
+- `apiKey`: Required. Your API key for the Mascot service
+- `bufferSize`: Optional. Buffer size for speech (default: 2)
+- `enableTimingEvents`: Optional. Enable timing logs (default: true)
+- `apiEndpoint`: Optional. Custom API endpoint
+
+**Returns:**
+
+- `speak(text, voice?)`: Function to make the mascot speak
+- `stopSpeaking()`: Function to stop speech
+- `seekToPosition(position)`: Function to seek to a position in milliseconds
+- `isSpeaking`: Boolean indicating if the mascot is currently speaking
+- `isLoading`: Boolean indicating if speech is loading
+- `error`: Error message or null
+- `progress`: Current playback position in milliseconds
+
+#### `useMascotPlayback(options)`
+
+Provides low-level control over mascot animations.
+
+**Options:**
+
+- `setSpeakingState`: Optional. Whether to update the speaking state (default: true)
+
+**Returns:**
+
+- `add(chunks)`: Function to add viseme chunks
+- `stress(stresses)`: Function to add stress chunks
+- `play()`: Function to start playback
+- `seek(time)`: Function to seek to a position
+- `pause()`: Function to pause playback
+- `reset()`: Function to reset playback
+
+### Constants
+
+#### `MascotVoices`
+
+Object containing all available voice options.

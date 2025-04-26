@@ -52,9 +52,7 @@
   "navigation": [
     {
       "group": "Get Started",
-      "pages": [
-        "introduction"
-      ]
+      "pages": ["introduction"]
     },
     {
       "group": "Libraries",
@@ -67,26 +65,28 @@
             "libraries/mascot-call",
             "libraries/react-troubleshooting"
           ]
+        },
+        {
+          "group": "React Native",
+          "icon": "react",
+          "pages": [
+            "libraries/react-native-sdk",
+            "libraries/react-native-troubleshooting"
+          ]
         }
       ]
     },
     {
       "group": "Ready-made Mascots",
-      "pages": [
-        "mascots/ready-to-use-mascots"
-      ]
+      "pages": ["mascots/ready-to-use-mascots"]
     },
     {
       "group": "Endpoints",
-      "pages": [
-        "api-reference/endpoint/post"
-      ]
+      "pages": ["api-reference/endpoint/post"]
     },
     {
       "group": "Integration Examples",
-      "pages": [
-        "api-reference/lipsync-integration"
-      ]
+      "pages": ["api-reference/lipsync-integration"]
     }
   ],
   "footerSocials": {
