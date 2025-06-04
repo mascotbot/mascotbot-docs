@@ -16,19 +16,11 @@ Convert text to speech while simultaneously generating viseme predictions. Suppo
 ## Real-time Streaming
 Both endpoints use Server-Sent Events (SSE) to provide real-time streaming responses, enabling low-latency playback and immediate visual feedback.
 
-## Authentication
-
-All API endpoints require authentication using Bearer tokens:
-
-```json
-"security": [
-  {
-    "bearerAuth": []
-  }
-]
-```
-
-Include your API key in the `Authorization` header:
-```
-Authorization: Bearer your_api_key_here
-```
+<CardGroup cols={2}>
+  <Card title="Process Audio for Visemes" icon="waveform" href="/api-reference/endpoint/post">
+    Convert existing audio files to viseme predictions for facial animation
+  </Card>
+  <Card title="Generate Speech and Visemes" icon="microphone" href="/api-reference/endpoint/visemes-audio">
+    Convert text to speech with synchronized viseme generation using multiple TTS engines
+  </Card>
+</CardGroup>
