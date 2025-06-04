@@ -1,17 +1,24 @@
 ---
-title: 'Introduction'
-description: 'API Endpoints'
+title: 'API Reference'
+description: 'Viseme Prediction API for facial animation and speech synthesis'
 ---
 
-<Note>
-  If you're not looking to build API reference documentation, you can delete
-  this section by removing the api-reference folder.
-</Note>
+Welcome to the Mascotbot Viseme Prediction API documentation. This API provides two main capabilities for creating synchronized facial animations:
 
+## Available Endpoints
+
+### `/v1/visemes` - Process Audio for Visemes
+Process existing audio files to generate viseme predictions for facial animation. Ideal when you already have audio and need synchronized mouth movements.
+
+### `/v1/visemes-audio` - Generate Speech and Visemes  
+Convert text to speech while simultaneously generating viseme predictions. Supports multiple TTS engines including ElevenLabs and Cartesia for high-quality voice synthesis.
+
+## Real-time Streaming
+Both endpoints use Server-Sent Events (SSE) to provide real-time streaming responses, enabling low-latency playback and immediate visual feedback.
 
 ## Authentication
 
-All API endpoints are authenticated using Bearer tokens and picked up from the specification file.
+All API endpoints require authentication using Bearer tokens:
 
 ```json
 "security": [
@@ -19,4 +26,9 @@ All API endpoints are authenticated using Bearer tokens and picked up from the s
     "bearerAuth": []
   }
 ]
+```
+
+Include your API key in the `Authorization` header:
+```
+Authorization: Bearer your_api_key_here
 ```

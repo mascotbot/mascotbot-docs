@@ -5,11 +5,19 @@ description: "Learn how to connect any TTS to our lipsync API for animating masc
 icon: 'lips'
 ---
 
-In this guide, we'll explore how developers can use our lipsync endpoint to connect any Text-to-Speech (TTS) service and animate a mascot using our lipsync/visemes API. This involves setting up a server route to orchestrate the TTS and lipsync API and then playing it on the front end.
+In this guide, we'll explore how developers can use our lipsync endpoints to animate mascots with synchronized speech. We offer two approaches: a simplified one-call solution and a flexible two-step process for custom TTS integration.
 
-## Elevenlabs Voice Over Integration
+## Two Integration Approaches
 
-This demo shows how to use the lipsync API with Elevenlabs' TTS service to animate a mascot. The integration synchronizes audio and viseme data, bringing the mascot to life with any text input. Below is an interactive example of this integration so you could try it in acion.
+### 🚀 Approach 1: Simplified One-Call Integration (Recommended)
+Use our `/v1/visemes-audio` endpoint to generate speech and visemes in a single streaming API call. Supports ElevenLabs, Cartesia, and our built-in TTS engine.
+
+### 🔧 Approach 2: Custom TTS Integration  
+Use any TTS service with our `/v1/visemes` endpoint for maximum flexibility when you have specific TTS requirements.
+
+## Approach 1: Simplified Integration with Built-in TTS
+
+This is the recommended approach for most use cases. The `/v1/visemes-audio` endpoint handles both text-to-speech conversion and viseme generation in a single streaming call.
 
 <iframe
   src="https://mascotbot-examples.vercel.app/voice-over"
@@ -20,14 +28,133 @@ This demo shows how to use the lipsync API with Elevenlabs' TTS service to anima
   allow="autoplay; encrypted-media; microphone; clipboard-write"
 ></iframe>
 
-<Note>This example server route waits for the full completion of both audio and lipsync, as it is a basic example. For faster text-to-playback, you can implement playback on a client as soon as the API returns the first viseme/lipsync and audio data chunks</Note>
+### Server-Side Implementation (Simplified)
 
-## How this demo works
+```typescript
+import { NextRequest, NextResponse } from "next/server";
 
-Here's a high-level overview of the system and data flow:
+const MASCOTBOT_API_KEY = "your-mascotbot-api-key";
+const ELEVENLABS_API_KEY = "your-elevenlabs-api-key"; // Optional, for ElevenLabs voices
+
+export async function POST(req: NextRequest) {
+  try {
+    const { text, voice = "am_fenrir", tts_engine = "mascotbot" } = await req.json();
+
+    // Single API call handles both TTS and viseme generation
+    const response = await fetch("https://api.mascot.bot/v1/visemes-audio", {
+      method: "POST",
+      body: JSON.stringify({
+        text,
+        voice,
+        tts_engine,
+        tts_api_key: tts_engine === "elevenlabs" ? ELEVENLABS_API_KEY : undefined,
+        speed: 1.0
+      }),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${MASCOTBOT_API_KEY}`,
+      },
+    });
+
+    // Stream the response directly to the client
+    return new Response(response.body, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    });
+  } catch (error) {
+    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
+  }
+}
+```
+
+### Client-Side Implementation (Simplified)
+
+```typescript
+import { useRef, useState } from "react";
+import { useMascotPlayback } from "@mascotbot-sdk/react";
+import { Button, Textarea } from "@mascotbot/ui";
+
+export default function StreamingVoiceOver() {
+  const mascotPlayback = useMascotPlayback();
+  const [text, setText] = useState<string>("");
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const handleStreamingPlayback = async () => {
+    setIsPlaying(true);
+    
+    const response = await fetch("/api/streaming-voice-over", {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    });
+
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+    
+    let audioChunks: string[] = [];
+    let isFirstAudio = true;
+
+    while (true) {
+      const { done, value } = await reader!.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      const lines = chunk.split('\n');
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = JSON.parse(line.slice(6));
+          
+          if (data.type === 'audio') {
+            audioChunks.push(data.data);
+            
+            // Start playback with first audio chunk
+            if (isFirstAudio) {
+              const audioBlob = new Blob([new Uint8Array(atob(data.data).split('').map(c => c.charCodeAt(0)))]);
+              const audioUrl = URL.createObjectURL(audioBlob);
+              audioRef.current!.src = audioUrl;
+              audioRef.current!.play();
+              isFirstAudio = false;
+            }
+          } else if (data.type === 'visemes') {
+            // Add visemes to mascot animation
+            mascotPlayback.add(data.visemes);
+            if (!mascotPlayback.isPlaying) {
+              mascotPlayback.play();
+            }
+          }
+        }
+      }
+    }
+    
+    setIsPlaying(false);
+  };
+
+  return (
+    <div>
+      <audio ref={audioRef} playsInline />
+      <Textarea value={text} onChange={({ target }) => setText(target.value)} />
+      <Button onClick={handleStreamingPlayback} disabled={isPlaying}>
+        {isPlaying ? "Playing..." : "Play with Streaming"}
+      </Button>
+    </div>
+  );
+}
+```
+
+## Approach 2: Custom TTS Integration
+
+Use this approach when you need maximum flexibility with your TTS provider or want to use a service not directly supported by our built-in integration.
+
+### How this approach works
+
+Here's the data flow for custom TTS integration:
 
 1. **Client-Side**: The user inputs text, which is sent to the server.
-2. **Server-Side**: The server processes the text using a TTS service to generate audio and sends it to the lipsync API to get visemes.
+2. **Server-Side**: The server processes the text using your chosen TTS service to generate audio and sends it to the `/v1/visemes` endpoint to get visemes.
 3. **Client-Side**: The audio and visemes are sent back to the client, where they are used to animate the mascot.
 
 <img
@@ -41,11 +168,7 @@ Here's a high-level overview of the system and data flow:
   alt="Lipsync Dark"
 />
 
-## Step-by-Step Implementation
-
-### 1. Setting Up the Server Route
-
-Create a server route to handle the TTS and lipsync API requests. Here's a simplified example using Node.js:
+### Server Route Implementation
 
 ```typescript
 import { NextRequest, NextResponse } from "next/server";
@@ -62,20 +185,18 @@ const elevenlabs = new ElevenLabsClient({
 
 export async function POST(req: NextRequest) {
   try {
-    // Parse the incoming request to get the text
     const { text } = await req.json();
 
-    // Convert text to speech using ElevenLabs TTS service
+    // Step 1: Convert text to speech using your chosen TTS service
     const rawPcmBase64 = (await elevenlabs.textToSpeech.convertWithTimestamps(VOICE_ID, {
       output_format: "pcm_16000",
       text,
     })) as { audio_base64: string };
 
-    // Convert the base64 PCM audio to a WAV buffer
     const pcmBuffer = Buffer.from(rawPcmBase64.audio_base64, "base64");
     const wavBuffer = createWavBufferFromPCM(pcmBuffer, 16000, 16, 1);
 
-    // Send the WAV audio to the MascotBot API to get visemes
+    // Step 2: Send the audio to MascotBot API for viseme generation
     const response = await fetch("https://api.mascot.bot/v1/visemes", {
       method: "POST",
       body: JSON.stringify({
@@ -88,24 +209,19 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Parse the response to get visemes data
     const visemes = await response.json();
 
-    // Return the audio and visemes to the client
     return NextResponse.json({
       audio: wavBuffer.toString("base64"),
       visemes,
     });
   } catch (error) {
-    // Handle errors and return a 500 status
     return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   }
 }
 ```
 
-### 2. Client-Side Integration
-
-On the client side, use the server route to fetch audio and visemes, then play them using a mascotbot SDK animation library.
+### Client-Side Integration
 
 ```typescript
 import { useRef, useState } from "react";
@@ -114,39 +230,32 @@ import { Button, Textarea } from "@mascotbot/ui";
 
 const API_DOMAIN = "https://your-api-domain.com";
 
-export default function VoiceOverSidebar() {
+export default function CustomTTSVoiceOver() {
   const mascotPlayback = useMascotPlayback();
   const [text, setText] = useState<string>("");
   const audioRef = useRef<HTMLAudioElement>(null);
 
   return (
     <div>
-      {/* Audio element to play the generated audio */}
       <audio ref={audioRef} playsInline />
-
-      {/* Textarea for user input */}
       <Textarea value={text} onChange={({ target }) => setText(target.value)} />
-
-      {/* Button to trigger the TTS and lipsync process */}
       <Button
         onClick={async () => {
-          // Send the text to the server to get audio and visemes
-          const response = await fetch(`${API_DOMAIN}/api/voice-over`, {
+          // Send text to server for TTS + viseme processing
+          const response = await fetch(`${API_DOMAIN}/api/custom-tts-voice-over`, {
             method: "POST",
             body: JSON.stringify({ text }),
           });
 
-          // Parse the response to get audio and visemes
           const { audio, visemes } = await response.json();
 
-          // Convert the base64 audio to a Blob and create a URL
+          // Convert base64 audio to playable format
           const audioBlob = new Blob([audio], { type: "audio/wav" });
           const audioUrl = URL.createObjectURL(audioBlob);
 
-          // Add visemes to the mascot playback
+          // Setup synchronized playback
           mascotPlayback.add(visemes);
 
-          // Play the audio and animate the mascot
           if (audioRef.current) {
             audioRef.current.src = audioUrl;
             audioRef.current.oncanplay = () => {
@@ -157,20 +266,31 @@ export default function VoiceOverSidebar() {
           }
         }}
       >
-        Play
+        Play with Custom TTS
       </Button>
     </div>
   );
 }
 ```
 
-## Conclusion
+## Choosing the Right Approach
 
-By following this guide, you can integrate any TTS service with our lipsync API to animate mascots on your platform. This setup allows for dynamic and engaging user experiences by synchronizing audio with visual animations.
+**Use Approach 1 (Simplified)** when:
+- You want the fastest development experience
+- Built-in voices meet your requirements  
+- You want real-time streaming for better UX
+- You're using supported TTS engines (ElevenLabs, Cartesia, MascotBot)
 
+**Use Approach 2 (Custom TTS)** when:
+- You have specific TTS requirements not covered by built-in engines
+- You need complete control over audio processing
+- You're integrating with proprietary or specialized TTS systems
+- You have existing TTS infrastructure you want to maintain
+
+<Note>
+Both approaches support the same viseme output format and work with all MascotBot SDKs. The streaming approach (Approach 1) provides better user experience with lower latency.
+</Note>
 
 <Tip>
-
-You'll get a **working example** once subscribed to one of our paid plans.
-
+You'll get **working examples** for both approaches once subscribed to one of our paid plans.
 </Tip>

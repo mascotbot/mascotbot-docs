@@ -2,12 +2,98 @@ openapi: 3.1.0
 info:
   title: Viseme Prediction API
   version: 1.0.0
-  description: API for processing audio and streaming viseme predictions
+  description: API for processing audio and streaming viseme predictions, and for generating synchronized speech with visemes
 components:
   securitySchemes:
     BearerAuth:
       type: http
       scheme: bearer
+  schemas:
+    VisemeObject:
+      type: object
+      properties:
+        visemeId:
+          type: integer
+          description: Viseme ID (0-21, Microsoft SAPI mapping)
+          minimum: 0
+          maximum: 21
+          example: 12
+        offset:
+          type: number
+          description: Timing offset in milliseconds
+          example: 110
+      required:
+        - visemeId
+        - offset
+    AudioEvent:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: ["audio"]
+        data:
+          type: string
+          description: Base64-encoded PCM audio data (16-bit, mono)
+          example: "UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA="
+        sample_rate:
+          type: integer
+          description: Audio sample rate in Hz
+          example: 16000
+        sequence:
+          type: integer
+          description: Sequential chunk number
+          example: 0
+        chunk_duration_ms:
+          type: number
+          description: Duration of this audio chunk in milliseconds
+          example: 250
+      required:
+        - type
+        - data
+        - sample_rate
+        - sequence
+        - chunk_duration_ms
+    VisemesEvent:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: ["visemes"]
+        visemes:
+          type: array
+          items:
+            $ref: '#/components/schemas/VisemeObject'
+        chunk_duration_ms:
+          type: number
+          description: Duration covered by these visemes
+          example: 250
+        audio_sequence:
+          type: integer
+          description: Corresponding audio sequence number
+          example: 0
+        viseme_sequence:
+          type: string
+          description: Viseme chunk progress (e.g., "1/3")
+          example: "1/3"
+      required:
+        - type
+        - visemes
+        - chunk_duration_ms
+        - audio_sequence
+        - viseme_sequence
+    ErrorEvent:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: ["error"]
+        error:
+          type: string
+          description: Error message describing what went wrong
+          example: "Invalid voice ID"
+      required:
+        - type
+        - error
 servers:
   - url: https://api.mascot.bot
     description: Production server
@@ -93,3 +179,175 @@ paths:
                   error:
                     type: string
                     example: "Internal server error"
+
+  /v1/visemes-audio:
+    post:
+      summary: Generate synchronized speech and visemes from text
+      description: |
+        Converts text to speech using various TTS engines and generates synchronized viseme data for facial animation.
+        Returns real-time streaming data via Server-Sent Events (SSE) for low-latency playback.
+        
+        Supports multiple TTS engines:
+        - **mascotbot** (default): Built-in TTS engine
+        - **elevenlabs**: High-quality TTS with custom voices  
+        - **cartesia**: Alternative TTS provider
+        
+        The response streams both audio chunks (base64-encoded PCM) and viseme timing data.
+      operationId: getVisemesAudio
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - text
+                - voice
+              properties:
+                text:
+                  type: string
+                  description: Text to synthesize into speech
+                  example: "Hello world! How are you today?"
+                  maxLength: 5000
+                voice:
+                  type: string
+                  description: Voice ID to use for synthesis
+                  example: "N2lVS1w4EtoT3dr4eOWO"
+                tts_engine:
+                  type: string
+                  description: TTS engine to use
+                  enum: ["mascotbot", "elevenlabs", "cartesia"]
+                  default: "elevenlabs"
+                  example: "elevenlabs"
+                tts_api_key:
+                  type: string
+                  description: API key for external TTS engines (required for elevenlabs/cartesia)
+                  example: "sk_your_elevenlabs_api_key_here"
+                speed:
+                  type: number
+                  description: Speech speed multiplier (e.g., 1.0 = normal, 1.2 = 20% faster)
+                  minimum: 0.5
+                  maximum: 2.0
+                  default: 1.0
+                  example: 1.1
+            examples:
+              elevenlabs:
+                summary: ElevenLabs TTS (Recommended)
+                value:
+                  text: "Hello! This uses ElevenLabs for high-quality speech."
+                  tts_engine: "elevenlabs"
+                  tts_api_key: "sk_your_elevenlabs_api_key_here"
+                  voice: "N2lVS1w4EtoT3dr4eOWO"
+                  speed: 1.1
+              mascotbot:
+                summary: MascotBot TTS
+                value:
+                  text: "Hello! This is the built-in MascotBot voice."
+                  voice: "am_fenrir"
+              cartesia:
+                summary: Cartesia TTS
+                value:
+                  text: "Hello! This uses Cartesia TTS engine."
+                  tts_engine: "cartesia"
+                  tts_api_key: "your_cartesia_api_key"
+                  voice: "cartesia_voice_id"
+                  speed: 0.9
+      responses:
+        '200':
+          description: |
+            Successful response streams synchronized audio and viseme data using Server-Sent Events.
+            
+            The stream contains alternating audio and visemes events:
+            1. **Audio events** contain base64-encoded PCM audio data for playback
+            2. **Visemes events** contain facial animation data synchronized with audio
+            3. **Error events** indicate processing errors
+            
+            Events are delivered in real-time with typical first chunk latency of 200-500ms.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: |
+                  Server-Sent Events stream with "data: " prefix followed by JSON.
+                  
+                  Event types:
+                  - audio: Contains PCM audio data and timing info
+                  - visemes: Contains viseme IDs and timing offsets  
+                  - error: Contains error information
+              examples:
+                audioEvent:
+                  summary: Audio Event
+                  value: |
+                    data: {"type":"audio","data":"UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=","sample_rate":16000,"sequence":0,"chunk_duration_ms":250}
+                visemesEvent:
+                  summary: Visemes Event
+                  value: |
+                    data: {"type":"visemes","visemes":[{"visemeId":0,"offset":0},{"visemeId":12,"offset":110},{"visemeId":9,"offset":224}],"chunk_duration_ms":250,"audio_sequence":0,"viseme_sequence":"1/3"}
+                errorEvent:
+                  summary: Error Event
+                  value: |
+                    data: {"type":"error","error":"Invalid voice ID specified"}
+                completeStream:
+                  summary: Complete Stream Example
+                  value: |
+                    data: {"type":"audio","data":"UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=","sample_rate":16000,"sequence":0,"chunk_duration_ms":250}
+                    
+                    data: {"type":"visemes","visemes":[{"visemeId":0,"offset":0},{"visemeId":12,"offset":110}],"chunk_duration_ms":250,"audio_sequence":0,"viseme_sequence":"1/2"}
+                    
+                    data: {"type":"audio","data":"UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAB=","sample_rate":16000,"sequence":1,"chunk_duration_ms":250}
+                    
+                    data: {"type":"visemes","visemes":[{"visemeId":21,"offset":347},{"visemeId":11,"offset":429}],"chunk_duration_ms":250,"audio_sequence":1,"viseme_sequence":"2/2"}
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                examples:
+                  missingFields:
+                    summary: Missing Required Fields
+                    value:
+                      error: "Missing required fields: text and voice"
+                  elevenlabsFields:
+                    summary: Missing ElevenLabs Fields
+                    value:
+                      error: "Missing required fields for ElevenLabs: text, tts_api_key, and voice are required"
+                  cartesiaFields:
+                    summary: Missing Cartesia Fields
+                    value:
+                      error: "Missing required fields for Cartesia: text, tts_api_key, and voice are required"
+        '401':
+          description: Unauthorized - Invalid API key
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Invalid API key"
+        '405':
+          description: Method not allowed - Use POST
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Method not allowed. Use POST with JSON body."
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Internal server error: Connection timeout"

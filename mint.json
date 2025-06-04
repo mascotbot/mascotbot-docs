@@ -82,7 +82,10 @@
     },
     {
       "group": "Endpoints",
-      "pages": ["api-reference/endpoint/post"]
+      "pages": [
+        "api-reference/endpoint/post",
+        "api-reference/endpoint/visemes-audio"
+      ]
     },
     {
       "group": "Integration Examples",

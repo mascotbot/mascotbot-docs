@@ -1,0 +1,14 @@
+---
+title: "Generate Speech and Visemes"
+openapi: "POST /v1/visemes-audio"
+---
+
+Convert text to speech using various TTS engines and generate synchronized viseme data for facial animation. This endpoint returns real-time streaming data via Server-Sent Events (SSE) for low-latency playback.
+
+## Supported TTS Engines
+
+- **mascotbot** (default): Built-in TTS engine
+- **elevenlabs**: High-quality TTS with custom voices  
+- **cartesia**: Alternative TTS provider
+
+The response streams both audio chunks (base64-encoded PCM) and viseme timing data. 
