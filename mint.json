@@ -2,6 +2,14 @@
   "$schema": "https://mintlify.com/schema.json",
   "name": "Mascotbot Documentation",
   "openapi": "api-reference/openapi.yaml",
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude"
+    ]
+  },
   "logo": {
     "dark": "logo/mascotbot_logo_light.svg",
     "light": "logo/mascotbot_logo_dark.svg"
