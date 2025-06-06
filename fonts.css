@@ -1,0 +1,18 @@
+/* Custom font declarations */
+@font-face {
+  font-family: "Rawlinson";
+  src: url("https://app.mascot.bot/fonts/RawlinsonCond.woff2") format("woff2"),
+    url("https://app.mascot.bot/fonts/RawlinsonCond.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Custom heading style for main title */
+.mascotbot-heading {
+  font-family: "Rawlinson", sans-serif;
+} 

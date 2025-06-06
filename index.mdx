@@ -1,0 +1,58 @@
+---
+title: "Introduction"
+description: "Create engaging AI mascots with advanced lip-sync technology. Build interactive experiences for your applications."
+icon: "sparkles"
+mode: "custom"
+---
+
+export const HeroCard = ({ filename, title, description, href }) => {
+  return (
+    <a className="group cursor-pointer pb-8" href={href}>
+      <img src={`/images/hero/${filename}.png`} className="block dark:hidden pointer-events-none group-hover:scale-105 transition-all duration-100" />
+      <img src={`/images/hero/${filename}-dark.png`} className="pointer-events-none group-hover:scale-105 transition-all duration-100 hidden dark:block" />
+      <h3 className="mt-5 text-gray-900 dark:text-zinc-50 font-medium">{title}</h3>
+      <span className="mt-1.5">
+        {description}
+      </span>
+    </a>
+  )
+}
+
+<div className="relative">
+<div className="absolute top-0 lg:-top-16 left-0 right-0">
+<img
+  src="/images/hero/background-light.png"
+  className="block dark:hidden pointer-events-none"
+/>
+<img
+  src="/images/hero/background-dark.png"
+  className="hidden dark:block pointer-events-none"
+/>
+
+</div>
+
+<div className="px-4 py-16 lg:py-48 lg:pb-24 max-w-3xl mx-auto">
+<h1 className="text-5xl font-medium text-center text-gray-900 dark:text-zinc-50 tracking-tight mascotbot-heading">
+Mascotbot Documentation
+
+</h1>
+
+<p className="max-w-xl mx-auto px-4 mt-4 text-lg text-center text-gray-500 dark:text-zinc-500">
+Create engaging AI mascots with advanced lip-sync technology. Build interactive experiences for your applications.
+
+</p>
+
+<div className="px-6 lg:px-0 mt-12 lg:mt-24 grid sm:grid-cols-2 gap-x-6 gap-y-4">
+<HeroCard filename="react-sdk" title="React SDK" description="Integrate Mascotbot into your React applications with our powerful SDK" href="/libraries/react-sdk" />
+
+<HeroCard filename="react-native" title="React Native SDK" description="Build mobile experiences with our React Native SDK for iOS and Android" href="/libraries/react-native-sdk" />
+
+<HeroCard filename="mascots" title="Ready-made Mascots" description="Browse our collection of pre-built mascots with unique personalities" href="/mascots/ready-to-use-mascots" />
+
+<HeroCard filename="api-reference" title="API Reference" description="Explore our comprehensive API documentation and integration guides" href="/api-reference" />
+
+</div>
+
+</div>
+
+</div> 

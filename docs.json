@@ -1,0 +1,125 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "maple",
+  "name": "Mascotbot Documentation",
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude"
+    ]
+  },
+  "colors": {
+    "primary": "#000000",
+    "light": "#FFFFFF",
+    "dark": "#000000"
+  },
+  "favicon": "/favicon.svg",
+  "navigation": {
+    "dropdowns": [
+      {
+        "dropdown": "Documentation",
+        "icon": "book",
+        "description": "Get started with Mascotbot",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "index"
+            ]
+          },
+          {
+            "group": "Libraries",
+            "pages": [
+              {
+                "group": "React",
+                "icon": "react",
+                "pages": [
+                  "libraries/react-sdk",
+                  "libraries/mascot-call",
+                  "libraries/react-troubleshooting"
+                ]
+              },
+              {
+                "group": "React Native",
+                "icon": "react",
+                "pages": [
+                  "libraries/react-native-sdk",
+                  "libraries/react-native-troubleshooting"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Ready-made Mascots",
+            "pages": [
+              "mascots/ready-to-use-mascots"
+            ]
+          }
+        ]
+      },
+      {
+        "dropdown": "API Reference",
+        "description": "Complete API documentation",
+        "icon": "terminal",
+        "groups": [
+          {
+            "group": "API Documentation",
+            "pages": [
+              "api-reference/introduction"
+            ]
+          },
+          {
+            "group": "Endpoints",
+            "pages": [
+              "api-reference/endpoint/post",
+              "api-reference/endpoint/visemes-audio"
+            ]
+          },
+          {
+            "group": "Integration Examples",
+            "pages": [
+              "api-reference/lipsync-integration"
+            ]
+          }
+        ]
+      }
+    ],
+    "global": {
+      "anchors": [
+        {
+          "anchor": "Follow us on X",
+          "href": "https://x.com/mascot_bots",
+          "icon": "megaphone"
+        }
+      ]
+    }
+  },
+  "logo": {
+    "light": "logo/mascotbot_logo_dark.svg",
+    "dark": "logo/mascotbot_logo_light.svg",
+    "href": "https://mascot.bot"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Support and Feedback",
+        "href": "mailto:support@mascot.bot"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Main Website",
+      "href": "https://mascot.bot"
+    }
+  },
+  "footer": {
+    "socials": {
+      "x": "https://x.com/mascot_bots"
+    }
+  },
+  "api": {
+    "openapi": "api-reference/openapi.yaml"
+  }
+}
