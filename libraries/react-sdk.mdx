@@ -145,9 +145,8 @@ The `useMascotSpeech` hook provides advanced text-to-speech functionality with s
 import { useMascotSpeech } from "@mascotbot-sdk/react";
 
 const speech = useMascotSpeech({
-  apiKey: "your-api-key", // Optional when using proxy
-  useProxy: true,
-  apiEndpoint: "/api/visemes-audio",
+  apiEndpoint: "/api/visemes-audio", // Required - your API route that handles MascotBot requests
+  apiKey: "your-api-key", // Optional - adds auth headers when provided
   defaultVoice: "am_fenrir",
   bufferSize: 1,
 });
