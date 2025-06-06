@@ -36,17 +36,17 @@ Ensure that you have the required peer dependencies installed:
 
 ```bash npm
 npm install react react-dom
-npm install @rive-app/canvas @rive-app/react-canvas
+npm install @rive-app/react-webgl2
 ```
 
 ```bash yarn
 yarn add react react-dom
-yarn add @rive-app/canvas @rive-app/react-canvas
+yarn add @rive-app/react-webgl2
 ```
 
 ```bash pnpm
 pnpm add react react-dom
-pnpm add @rive-app/canvas @rive-app/react-canvas
+pnpm add @rive-app/react-webgl2
 ```
 
 </CodeGroup>
@@ -74,7 +74,7 @@ function App() {
 Use the `useRive` hook to create a Rive instance. This instance will manage the animations and state machines for your mascot.
 
 ```jsx
-import { useRive } from "@rive-app/react-canvas";
+import { useRive } from "@rive-app/react-webgl2";
 
 const rive = useRive({
   src: "your_rive_file_url",
@@ -137,6 +137,44 @@ const playback = useMascotPlayback({ setSpeakingState: false });
 
 The `setSpeakingState` option allows you to disable the automatic management of the `is_speaking` state, giving you manual control over when and how the speaking state is set.
 
+### `useMascotSpeech`
+
+The `useMascotSpeech` hook provides advanced text-to-speech functionality with support for multiple TTS engines, queueing, and real-time audio streaming.
+
+```jsx
+import { useMascotSpeech } from "@mascotbot-sdk/react";
+
+const speech = useMascotSpeech({
+  apiKey: "your-api-key", // Optional when using proxy
+  useProxy: true,
+  apiEndpoint: "/api/visemes-audio",
+  defaultVoice: "am_fenrir",
+  bufferSize: 1,
+});
+
+// Basic usage
+await speech.speak("Hello world", { voice: "am_fenrir" });
+
+// Add to queue for sequential playback
+speech.addToQueue("First message", { voice: "am_fenrir" });
+speech.addToQueue("Second message", { voice: "af_nova" });
+
+// Using custom TTS engines
+await speech.speak("Hello from ElevenLabs", {
+  ttsParams: {
+    tts_engine: "elevenlabs",
+    tts_api_key: "your-elevenlabs-key",
+    voice: "voice-id",
+    speed: 1.2
+  }
+});
+
+// Control queue and playback
+speech.stopAndClear(); // Stop and clear queue
+speech.clearQueue(); // Clear queue only
+speech.setBufferSize(3); // Adjust buffering
+```
+
 ## Handling Visemes and Audio Playback
 
 To create a synchronized animation and audio experience, you can use the `playback.add` method to add visemes. This can be done in various ways, such as fetching from a server, generating in real-time, or any other method suitable for your application.
@@ -160,6 +198,15 @@ audioElement.src = "your_audio_source";
 audioElement.play();
 ```
 
+## WebGL2 Performance Benefits
+
+The SDK now uses WebGL2 for better performance and rendering capabilities:
+
+- **Better Performance**: Hardware-accelerated rendering for smoother animations
+- **Enhanced Effects**: Support for advanced visual effects and shaders
+- **Improved Memory Usage**: More efficient handling of graphics resources
+- **Better Scaling**: Better performance with complex animations and multiple mascots
+
 ## Conclusion
 
-The MascotBOT SDK offers a flexible and powerful way to integrate mascots into your React applications. By following the setup instructions and utilizing the provided hooks, you can create engaging and interactive experiences for your users. For more detailed examples and integration guides, please refer to the separate article on production and integration examples.
+The MascotBOT SDK offers a flexible and powerful way to integrate mascots into your React applications. By following the setup instructions and utilizing the provided hooks, you can create engaging and interactive experiences for your users. The enhanced `useMascotSpeech` hook provides production-ready speech capabilities with support for multiple TTS providers, intelligent queueing, and real-time streaming. For more detailed examples and integration guides, please refer to the separate article on production and integration examples.
