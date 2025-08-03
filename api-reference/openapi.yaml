@@ -218,6 +218,10 @@ paths:
                           type: string
                           description: Agent ID for the ElevenLabs conversational AI
                           example: "agent_1234567890"
+                        sample_rate:
+                          type: integer
+                          description: audio sample rate
+                          example: 16000
       responses:
         '200':
           description: |
