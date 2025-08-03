@@ -13,6 +13,9 @@ Process existing audio files to generate viseme predictions for facial animation
 ### `/v1/visemes-audio` - Generate Speech and Visemes  
 Convert text to speech while simultaneously generating viseme predictions. Supports multiple TTS engines including ElevenLabs and Cartesia for high-quality voice synthesis.
 
+### `/v1/get-signed-url` - Generate a URL for a conversation via ElevenLabs Conversational AI with visemes
+Get a temporary URL (expires in 10 minutes) that can be used to connect to a Websocket proxy handling connection to your ElevenLabs Conversational AI agent and enrhching the websocket flow with visemes.
+
 ## Real-time Streaming
 Both endpoints use Server-Sent Events (SSE) to provide real-time streaming responses, enabling low-latency playback and immediate visual feedback.
 
@@ -22,5 +25,8 @@ Both endpoints use Server-Sent Events (SSE) to provide real-time streaming respo
   </Card>
   <Card title="Generate Speech and Visemes" icon="microphone" href="/api-reference/endpoint/visemes-audio">
     Convert text to speech with synchronized viseme generation using multiple TTS engines
+  </Card>
+  <Card title="Generate a URL for ElevenLabs Conversational AI " icon="microphone" href="/api-reference/endpoint/get-signed-url">
+    Use your existing ElevenLabs Conversational AI Agent with visemes stream added on top.
   </Card>
 </CardGroup>

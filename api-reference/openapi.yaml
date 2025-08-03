@@ -180,6 +180,78 @@ paths:
                     type: string
                     example: "Internal server error"
 
+  /v1/get-signed-url:
+    post:
+      summary: Get signed URL for ElevenLabs conversational AI proxy
+      description: |
+        Generates a signed URL for connecting to your ElevenLabs conversational AI via our proxy.
+        The signed URL is valid for a limited time. Connections made via the signed URL send requests to the ElevenLabs API and add visemes to the audio stream.
+      operationId: getSignedUrl
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - config
+              properties:
+                config:
+                  type: object
+                  description: Configuration parameters
+                  properties:
+                    provider:
+                      type: string
+                      description: Name of the TTS provider (must be "elevenlabs" at the moment)
+                      example: "elevenlabs"
+                    provider_config:
+                      type: object
+                      description: Provider-specific configuration
+                      properties:
+                        tts_api_key:
+                          type: string
+                          description: API key for ElevenLabs TTS engine
+                          example: "sk_your_elevenlabs_api_key_here"
+                        agent_id:
+                          type: string
+                          description: Agent ID for the ElevenLabs conversational AI
+                          example: "agent_1234567890"
+      responses:
+        '200':
+          description: |
+            Successful response containing the signed websocket URL for connecting to the ElevenLabs conversational AI proxy.
+            Use this URL to stream audio data and receive viseme predictions in real-time.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  signed_url:
+                    type: string
+                    description: Signed WebSocket URL for uploading connecting to the ElevenLabs conversational AI proxy
+                    example: "wss://api.mascot.bot/v1/convresation?token=abc123"
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Invalid file name provided"
+        '401':
+          description: Unauthorized - Invalid API key
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Invalid API key"
   /v1/visemes-audio:
     post:
       summary: Generate synchronized speech and visemes from text
