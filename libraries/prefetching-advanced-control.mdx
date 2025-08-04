@@ -1,0 +1,614 @@
+---
+title: Audio Prefetching & Advanced Control - Optimize Mascot Bot SDK Performance
+sidebarTitle: Prefetching & Advanced Control
+description: Master audio prefetching and manual state control in Mascot Bot SDK. Essential for video exports, queue management, and high-performance applications. Learn advanced patterns →
+'og:title': 'Audio Prefetching & Advanced Control | Mascot Bot SDK'
+'og:description': 'Advanced techniques for audio prefetching, manual state control, and queue management in Mascot Bot SDK. Perfect for video exports and performance optimization.'
+'twitter:title': 'Master Audio Prefetching in Mascot Bot SDK'
+'twitter:description': 'Learn advanced prefetching patterns, manual state control, and performance optimization techniques for Mascot Bot SDK.'
+'article:published_time': '2025-01-04T00:00:00+00:00'
+'article:author': 'Mascot Bot Team'
+'article:section': 'SDK Documentation'
+'article:tag': 'prefetching, performance, video export, advanced, audio'
+---
+
+# Audio Prefetching & Advanced Control
+
+Unlock the full potential of Mascot Bot SDK with advanced audio prefetching and manual state control. Essential for video exports, multi-scene rendering, and high-performance applications requiring precise timing control.
+
+
+<Columns cols={2}>
+  <Card title="Quick Start" icon="rocket" href="#quick-start">
+    Start prefetching in minutes
+  </Card>
+  <Card title="Use Cases" icon="lightbulb" href="#use-cases">
+    Video export, queue management
+  </Card>
+  <Card title="API Reference" icon="code" href="#api-reference">
+    Complete API documentation
+  </Card>
+  <Card title="Examples" icon="file-code" href="#examples">
+    Real-world implementations
+  </Card>
+</Columns>
+
+## Why Use Prefetching?
+
+Traditional streaming approaches introduce latency between speech segments. Prefetching eliminates these gaps by loading audio and viseme data ahead of time, enabling:
+
+- **Seamless Video Exports**: Pre-load all audio before rendering
+- **Smooth Transitions**: Zero delay between sequential speech
+- **Offline Playback**: Cache audio for disconnected scenarios
+- **Performance Testing**: Compare multiple voices without waiting
+
+## Core Concepts
+
+### Prefetching Architecture
+
+The SDK's prefetching system separates data fetching from playback:
+
+```
+1. Fetch Phase: Download audio + viseme data without playing
+2. Store Phase: Cache data in memory with timing information
+3. Play Phase: Use cached data for instant playback
+```
+
+### Manual State Control
+
+When prefetching, you often need direct control over the speaking state, bypassing automatic detection:
+
+```tsx
+// Disable automatic state management
+const speech = useMascotSpeech({
+  disableAutomaticSpeakingState: true
+});
+
+// Control speaking state manually
+playback.setSpeakingStateManually(true);
+```
+
+## Quick Start
+
+### Basic Prefetching
+
+```tsx
+import { useMascotSpeech, useMascotPlayback } from '@mascotbot-sdk/react';
+
+function PrefetchExample() {
+  const speech = useMascotSpeech({
+    apiEndpoint: "/api/visemes-audio",
+    disableAutomaticSpeakingState: true // Critical for prefetching
+  });
+
+  const playback = useMascotPlayback({
+    manualSpeakingStateControl: true
+  });
+
+  const handlePrefetchAndPlay = async () => {
+    // 1. Prefetch audio data
+    const prefetchedData = await speech.prefetchAudio("Hello world", {
+      ttsParams: {
+        voice: "en-US-1",
+        speed: 1.0
+      }
+    });
+
+    // 2. Load viseme data for lip sync
+    playback.loadPrefetchedData(prefetchedData.audioData.visemesBySequence);
+
+    // 3. Manually control speaking state
+    playback.setSpeakingStateManually(true);
+    playback.play();
+
+    // 4. Play audio from prefetched data
+    await playAudioFromPrefetchedData(prefetchedData);
+
+    // 5. Reset state when done
+    playback.setSpeakingStateManually(false);
+    playback.reset();
+  };
+
+  return (
+    <button onClick={handlePrefetchAndPlay}>
+      Prefetch & Play
+    </button>
+  );
+}
+```
+
+## API Reference
+
+### useMascotSpeech Options
+
+```typescript
+interface MascotSpeechOptions {
+  // ... standard options
+
+  // Disable automatic speaking state management
+  // Essential for prefetching workflows
+  disableAutomaticSpeakingState?: boolean;
+}
+```
+
+### prefetchAudio Method
+
+```typescript
+const prefetchedData = await speech.prefetchAudio(
+  text: string,
+  options?: {
+    ttsParams?: {
+      tts_engine?: string;
+      voice?: string;
+      speed?: number;
+      tts_api_key?: string;
+    }
+  }
+): Promise<{
+  audioData: {
+    audioEvents: Map<number, AudioEvent>;
+    visemesBySequence: Map<number, VisemeData[]>;
+  };
+  duration: number;
+}>;
+```
+
+### useMascotPlayback Methods
+
+```typescript
+interface MascotPlaybackMethods {
+  // Load prefetched viseme data
+  loadPrefetchedData(visemeData: Map<number, VisemeData[]>): void;
+
+  // Manual speaking state control
+  setSpeakingStateManually(isSpeaking: boolean): void;
+
+  // Standard playback controls
+  play(): void;
+  pause(): void;
+  reset(): void;
+}
+```
+
+## Use Cases
+
+### Video Export System
+
+The most common use case for prefetching is video export, where all audio must be loaded before rendering begins:
+
+```tsx
+async function exportVideo(scenes: Scene[]) {
+  // 1. Initialize export state
+  const audioCache = new Map<string, PrefetchedData>();
+  
+  // 2. Prefetch all scene audio in parallel
+  const prefetchPromises = scenes.map(async (scene) => {
+    if (scene.voiceover?.text) {
+      const data = await speech.prefetchAudio(scene.voiceover.text, {
+        ttsParams: {
+          voice: scene.voiceover.voice,
+          speed: scene.voiceover.speed
+        }
+      });
+      audioCache.set(scene.id, data);
+    }
+  });
+
+  await Promise.all(prefetchPromises);
+
+  // 3. Render video with cached audio
+  for (const scene of scenes) {
+    const prefetchedData = audioCache.get(scene.id);
+    if (prefetchedData) {
+      await renderSceneWithAudio(scene, prefetchedData);
+    }
+  }
+}
+```
+
+### Sequential Speech Queue
+
+Prefetching enables smooth transitions between multiple speech segments:
+
+```tsx
+function SpeechQueue({ items }: { items: string[] }) {
+  const [queue, setQueue] = useState<PrefetchedData[]>([]);
+  
+  // Prefetch all items on mount
+  useEffect(() => {
+    const prefetchAll = async () => {
+      const data = await Promise.all(
+        items.map(text => speech.prefetchAudio(text))
+      );
+      setQueue(data);
+    };
+    prefetchAll();
+  }, [items]);
+
+  // Play queue sequentially
+  const playQueue = async () => {
+    for (const data of queue) {
+      playback.loadPrefetchedData(data.audioData.visemesBySequence);
+      playback.setSpeakingStateManually(true);
+      playback.play();
+      
+      await playAudioFromPrefetchedData(data);
+      
+      playback.setSpeakingStateManually(false);
+      playback.reset();
+      
+      // Small gap between items
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  };
+
+  return <button onClick={playQueue}>Play All</button>;
+}
+```
+
+### Voice Comparison Tool
+
+Prefetch multiple voice options for instant comparison:
+
+```tsx
+function VoiceComparison({ text }: { text: string }) {
+  const [voiceData, setVoiceData] = useState<Map<string, PrefetchedData>>();
+  
+  const voices = ['en-US-1', 'en-US-2', 'en-UK-1'];
+  
+  useEffect(() => {
+    const prefetchVoices = async () => {
+      const data = new Map();
+      
+      await Promise.all(
+        voices.map(async (voice) => {
+          const prefetched = await speech.prefetchAudio(text, {
+            ttsParams: { voice }
+          });
+          data.set(voice, prefetched);
+        })
+      );
+      
+      setVoiceData(data);
+    };
+    
+    prefetchVoices();
+  }, [text]);
+
+  const playVoice = async (voice: string) => {
+    const data = voiceData?.get(voice);
+    if (data) {
+      playback.loadPrefetchedData(data.audioData.visemesBySequence);
+      playback.setSpeakingStateManually(true);
+      playback.play();
+      
+      await playAudioFromPrefetchedData(data);
+      
+      playback.setSpeakingStateManually(false);
+      playback.reset();
+    }
+  };
+
+  return (
+    <div>
+      {voices.map(voice => (
+        <button key={voice} onClick={() => playVoice(voice)}>
+          Play {voice}
+        </button>
+      ))}
+    </div>
+  );
+}
+```
+
+## Examples
+
+### Playing Prefetched Audio
+
+Here's a complete implementation of playing audio from prefetched data:
+
+```tsx
+async function playAudioFromPrefetchedData(
+  prefetchedData: PrefetchedData,
+  audioContext?: AudioContext
+) {
+  // Create or reuse AudioContext
+  const ctx = audioContext || new AudioContext();
+  
+  // Ensure context is running
+  if (ctx.state === 'suspended') {
+    await ctx.resume();
+  }
+  
+  // Convert base64 audio data to AudioBuffer
+  const audioBuffer = await createAudioBufferFromData(
+    prefetchedData.audioData,
+    ctx
+  );
+  
+  if (!audioBuffer) {
+    throw new Error('Failed to create audio buffer');
+  }
+  
+  // Create and play audio source
+  const source = ctx.createBufferSource();
+  source.buffer = audioBuffer;
+  source.connect(ctx.destination);
+  
+  // Return promise that resolves when audio ends
+  return new Promise<void>((resolve) => {
+    source.onended = () => resolve();
+    source.start(0);
+  });
+}
+
+async function createAudioBufferFromData(
+  audioData: { audioEvents: Map<number, AudioEvent> },
+  audioContext: AudioContext
+): Promise<AudioBuffer | null> {
+  const audioBuffers: AudioBuffer[] = [];
+  
+  // Process each audio event
+  for (const [sequence, audioEvent] of audioData.audioEvents) {
+    // Decode base64 to binary
+    const binaryString = atob(audioEvent.data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    // Convert to Int16 PCM
+    const int16Array = new Int16Array(bytes.length / 2);
+    for (let i = 0; i < int16Array.length; i++) {
+      const low = bytes[i * 2];
+      const high = bytes[i * 2 + 1];
+      int16Array[i] = (high << 8) | low;
+    }
+    
+    // Create AudioBuffer
+    const buffer = audioContext.createBuffer(
+      1, // mono
+      int16Array.length,
+      audioEvent.sample_rate
+    );
+    
+    // Convert to Float32
+    const channelData = buffer.getChannelData(0);
+    for (let i = 0; i < int16Array.length; i++) {
+      channelData[i] = int16Array[i] / 32768.0;
+    }
+    
+    audioBuffers.push(buffer);
+  }
+  
+  // Combine all buffers
+  const totalLength = audioBuffers.reduce((acc, buf) => acc + buf.length, 0);
+  const sampleRate = audioBuffers[0]?.sampleRate || 44100;
+  const combinedBuffer = audioContext.createBuffer(1, totalLength, sampleRate);
+  const combinedData = combinedBuffer.getChannelData(0);
+  
+  let offset = 0;
+  for (const buffer of audioBuffers) {
+    combinedData.set(buffer.getChannelData(0), offset);
+    offset += buffer.length;
+  }
+  
+  return combinedBuffer;
+}
+```
+
+### Advanced Export with Progress Tracking
+
+```tsx
+function ExportDialog({ scenes }: { scenes: Scene[] }) {
+  const [progress, setProgress] = useState(0);
+  const [status, setStatus] = useState<'idle' | 'prefetching' | 'rendering'>('idle');
+
+  const speech = useMascotSpeech({
+    disableAutomaticSpeakingState: true
+  });
+
+  const handleExport = async () => {
+    setStatus('prefetching');
+    
+    // Track prefetch progress
+    let completed = 0;
+    const total = scenes.filter(s => s.voiceover?.text).length;
+    
+    const prefetchPromises = scenes.map(async (scene, index) => {
+      if (scene.voiceover?.text) {
+        const data = await speech.prefetchAudio(scene.voiceover.text);
+        completed++;
+        setProgress((completed / total) * 50); // First 50% for prefetching
+        return { scene, data };
+      }
+      return null;
+    });
+
+    const prefetchedScenes = await Promise.all(prefetchPromises);
+    
+    setStatus('rendering');
+    
+    // Render with progress tracking
+    for (let i = 0; i < prefetchedScenes.length; i++) {
+      const item = prefetchedScenes[i];
+      if (item) {
+        await renderScene(item.scene, item.data);
+        setProgress(50 + ((i + 1) / prefetchedScenes.length) * 50);
+      }
+    }
+    
+    setStatus('idle');
+  };
+
+  return (
+    <div>
+      <button onClick={handleExport} disabled={status !== 'idle'}>
+        Export Video
+      </button>
+      {status !== 'idle' && (
+        <div>
+          <p>Status: {status}</p>
+          <progress value={progress} max={100} />
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+## Best Practices
+
+### 1. Always Disable Automatic State Management
+
+When using prefetching, always disable automatic speaking state detection:
+
+```tsx
+// ✅ Correct
+const speech = useMascotSpeech({
+  disableAutomaticSpeakingState: true
+});
+
+// ❌ Incorrect - will cause conflicts
+const speech = useMascotSpeech({});
+```
+
+### 2. Reuse AudioContext
+
+Create a single AudioContext and reuse it across all prefetched audio playback:
+
+```tsx
+// ✅ Correct - single context
+const audioContext = new AudioContext();
+
+for (const data of prefetchedItems) {
+  await playAudioFromPrefetchedData(data, audioContext);
+}
+
+// ❌ Incorrect - multiple contexts
+for (const data of prefetchedItems) {
+  const ctx = new AudioContext(); // Creates new context each time
+  await playAudioFromPrefetchedData(data, ctx);
+}
+```
+
+### 3. Handle Errors Gracefully
+
+Always implement error handling for prefetch operations:
+
+```tsx
+const prefetchWithRetry = async (text: string, maxRetries = 3) => {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await speech.prefetchAudio(text);
+    } catch (error) {
+      if (attempt === maxRetries - 1) throw error;
+      await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+    }
+  }
+};
+```
+
+### 4. Clean Up Resources
+
+Always reset playback state after use:
+
+```tsx
+try {
+  playback.loadPrefetchedData(data.visemesBySequence);
+  playback.setSpeakingStateManually(true);
+  playback.play();
+  
+  await playAudioFromPrefetchedData(data);
+} finally {
+  // Always clean up
+  playback.setSpeakingStateManually(false);
+  playback.reset();
+  speech.stopAndClear();
+}
+```
+
+## Performance Considerations
+
+### Memory Management
+
+Prefetching stores audio data in memory. For large projects:
+
+```tsx
+// Clear cached data when no longer needed
+const audioCache = new Map();
+
+// After use
+audioCache.clear();
+```
+
+### Parallel vs Sequential Prefetching
+
+```tsx
+// ✅ Parallel - faster for multiple items
+const allData = await Promise.all(
+  items.map(item => speech.prefetchAudio(item))
+);
+
+// ❌ Sequential - slower but uses less memory
+const allData = [];
+for (const item of items) {
+  allData.push(await speech.prefetchAudio(item));
+}
+```
+
+### Browser Limits
+
+Be aware of browser AudioContext limits (typically 6 simultaneous contexts):
+
+```tsx
+// Monitor active contexts
+let activeContexts = 0;
+const MAX_CONTEXTS = 6;
+
+if (activeContexts < MAX_CONTEXTS) {
+  const ctx = new AudioContext();
+  activeContexts++;
+  
+  ctx.addEventListener('statechange', () => {
+    if (ctx.state === 'closed') {
+      activeContexts--;
+    }
+  });
+}
+```
+
+## Troubleshooting
+
+### Common Issues
+
+<AccordionGroup>
+  <Accordion title="Audio plays but no lip sync">
+    Ensure you're loading viseme data before playing:
+    ```tsx
+    // Load viseme data first
+    playback.loadPrefetchedData(data.audioData.visemesBySequence);
+    // Then control speaking state
+    playback.setSpeakingStateManually(true);
+    ```
+  </Accordion>
+
+  <Accordion title="Speaking state conflicts">
+    Make sure automatic state management is disabled:
+    ```tsx
+    const speech = useMascotSpeech({
+      disableAutomaticSpeakingState: true
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Memory leaks with large exports">
+    Clear prefetched data after use:
+    ```tsx
+    // Clear individual items
+    audioCache.delete(sceneId);
+    
+    // Clear entire cache
+    audioCache.clear();
+    ```
+  </Accordion>
+</AccordionGroup>

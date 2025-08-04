@@ -1,0 +1,613 @@
+---
+title: ElevenLabs Avatar Integration - Add Real-time Visual Avatars to Your Voice AI
+sidebarTitle: ElevenLabs Avatar
+description: Complete guide to integrating animated avatars with ElevenLabs conversational AI. Real-time lip sync, WebSocket support, and production-ready React components. Start in 5 minutes →
+'og:title': 'ElevenLabs Avatar Integration - Real-time Visual Avatars | Mascot Bot SDK'
+'og:description': 'Transform your ElevenLabs voice agents into engaging visual experiences. Perfect lip sync, WebSocket integration, and React components for conversational AI avatars.'
+'og:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_images/og_elevenlabs.jpg'
+'og:url': 'https://docs.mascot.bot/libraries/elevenlabs-avatar'
+'twitter:title': 'Add Visual Avatars to ElevenLabs Voice AI'
+'twitter:description': 'Real-time lip sync avatars for ElevenLabs conversational AI. Easy React integration, natural animations, production-ready.'
+'twitter:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_images/og_elevenlabs.jpg'
+'article:published_time': '2025-01-31T00:00:00+00:00'
+'article:author': 'Mascot Bot Team'
+'article:section': 'SDK Documentation'
+'article:tag': 'ElevenLabs, avatar, voice AI, lip sync, React'
+---
+
+# ElevenLabs Avatar Integration - Real-time Visual Avatars for Your Voice AI
+
+Transform your ElevenLabs voice agents into engaging visual experiences with Mascot Bot SDK. Get perfect lip sync, seamless WebSocket integration, and production-ready React components that work alongside your existing ElevenLabs implementation.
+
+<video
+  autoPlay
+  muted
+  loop
+  playsInline
+  className="w-full rounded-xl"
+  src="https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/elevenlabs_demo.mp4"
+></video>
+
+<Columns cols={2}>
+  <Card title="Quick Start" icon="rocket" href="#quick-start">
+    Add avatars in 5 minutes
+  </Card>
+  <Card title="Live Demo" icon="play" href="https://mascotbot-seven.vercel.app/elevenlabs-demo">
+    See voice avatars in action
+  </Card>
+  <Card title="Features" icon="sparkles" href="#features">
+    Real-time lip sync & more
+  </Card>
+  <Card title="API Reference" icon="code" href="#api-reference">
+    Complete hook documentation
+  </Card>
+</Columns>
+
+## Why Add Avatars to Your ElevenLabs Conversational AI?
+
+Voice-only AI can feel impersonal. By adding a **conversational AI avatar** with real-time lip sync, you create more engaging, human-like interactions. Our **voice to avatar SDK** works seamlessly with your existing ElevenLabs setup - no modifications needed.
+
+## Features
+
+### <Icon icon="bullseye" iconType="solid" />&nbsp; Real-time Lip Sync
+Perfect **viseme synchronization** with ElevenLabs audio streams. Our **WebSocket avatar** technology ensures zero lag between voice and animation.
+
+### <Icon icon="bolt" iconType="solid" />&nbsp; 120fps Animation Performance
+Smooth, natural **voice-driven facial animation** powered by WebGL2 and Rive runtime.
+
+### <Icon icon="plug" iconType="solid" />&nbsp; Native ElevenLabs Support
+Works alongside `@elevenlabs/react` with zero conflicts. True **audio-to-animation mapping** without modifying ElevenLabs code.
+
+### <Icon icon="palette" iconType="solid" />&nbsp; Customizable Avatars
+Choose from pre-built characters or bring your own Rive animations. Full control over appearance and expressions.
+
+### <Icon icon="rotate" iconType="solid" />&nbsp; WebSocket Streaming Avatar
+Automatic **WebSocket streaming avatar** data extraction from ElevenLabs connections. Handles all message types including interruptions.
+
+### <Icon icon="masks-theater" iconType="solid" />&nbsp; Natural Lip Sync Processing
+Advanced algorithm creates natural mouth movements by intelligently merging visemes - avoiding robotic over-articulation.
+
+## Quick Start
+
+### Installation
+
+```bash
+npm install ./mascotbot-sdk-react-0.1.5.tgz @elevenlabs/react
+# or
+pnpm add ./mascotbot-sdk-react-0.1.5.tgz @elevenlabs/react
+```
+
+<Note>
+You'll receive the SDK .tgz file after subscribing to one of our plans. The SDK works alongside the official ElevenLabs React SDK without any modifications. Both packages are required for the integration.
+</Note>
+
+### Basic Integration
+
+Here's how to **add avatar to ElevenLabs** in just a few lines:
+
+```tsx
+// Initialize ElevenLabs conversational AI with avatar
+import { useConversation } from '@elevenlabs/react';
+import { 
+  useMascotElevenlabs, 
+  MascotClient, 
+  MascotRive 
+} from '@mascotbot-sdk/react';
+
+function VoiceAvatar() {
+  // Your existing ElevenLabs setup
+  const conversation = useConversation({
+    onConnect: () => console.log('Connected'),
+  });
+  
+  // Add visual avatar with one hook - it's that simple!
+  useMascotElevenlabs({ 
+    conversation,
+    gesture: true  // Optional: animated reactions
+  });
+
+  return (
+    <MascotClient 
+      src="/mascot.riv"
+      artboard="Character"
+    >
+      <MascotRive />
+      {/* Your ElevenLabs UI components */}
+    </MascotClient>
+  );
+}
+```
+
+That's it! Your **ElevenLabs voice with avatar** is ready. The SDK handles all **real-time synchronization** automatically.
+
+## Complete Implementation Guide
+
+### Step 1: Set Up URL Signing
+
+ElevenLabs requires signed URLs for WebSocket connections. Use the Mascot Bot proxy endpoint to get a signed URL that includes automatic viseme injection:
+
+<Note>
+The Mascot Bot proxy endpoint handles the ElevenLabs authentication and adds real-time viseme data to the WebSocket stream. This is required for the avatar lip-sync to work properly.
+</Note>
+
+```typescript
+// app/api/get-signed-url/route.ts
+import { NextResponse } from 'next/server';
+
+export async function GET() {
+  try {
+    // Use Mascot Bot proxy endpoint for automatic viseme injection
+    const response = await fetch(
+      'https://api.mascot.bot/v1/get-signed-url',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.MASCOT_BOT_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          config: {
+            provider: 'elevenlabs',
+            provider_config: {
+              agent_id: process.env.ELEVENLABS_AGENT_ID,
+              api_key: process.env.ELEVENLABS_API_KEY,
+            },
+          },
+        }),
+        // Ensure fresh URL for WebSocket avatar connection
+        cache: 'no-store',
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to get signed URL');
+    }
+
+    const data = await response.json();
+    return NextResponse.json({ signedUrl: data.signed_url });
+  } catch (error) {
+    console.error('Error fetching signed URL:', error);
+    return NextResponse.json(
+      { error: 'Failed to generate signed URL' },
+      { status: 500 }
+    );
+  }
+}
+
+// Force dynamic to prevent caching issues
+export const dynamic = 'force-dynamic';
+```
+
+<Info>
+Required environment variables:
+- `MASCOT_BOT_API_KEY`: Your Mascot Bot API key (get from [app.mascot.bot](https://app.mascot.bot))
+- `ELEVENLABS_API_KEY`: Your ElevenLabs API key
+- `ELEVENLABS_AGENT_ID`: Your ElevenLabs conversational AI agent ID
+</Info>
+
+#### Dynamic Agent Configuration
+
+For applications with multiple agents or dynamic configuration:
+
+```typescript
+// app/api/elevenlabs-signed-url/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { apiKey, agentId } = body;
+
+    if (!apiKey || !agentId) {
+      return NextResponse.json(
+        { error: 'API key and agent ID are required' },
+        { status: 400 }
+      );
+    }
+
+    const response = await fetch(
+      'https://api.mascot.bot/v1/get-signed-url',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.MASCOT_BOT_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          config: {
+            provider: 'elevenlabs',
+            provider_config: {
+              agent_id: agentId,
+              api_key: apiKey,
+            },
+          },
+        }),
+        cache: 'no-store',
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Failed to get signed URL:', errorText);
+      throw new Error('Failed to get signed URL');
+    }
+
+    const data = await response.json();
+    return NextResponse.json({ signedUrl: data.signed_url });
+  } catch (error) {
+    console.error('Error fetching signed URL:', error);
+    return NextResponse.json(
+      { error: 'Failed to generate signed URL' },
+      { status: 500 }
+    );
+  }
+}
+
+export const dynamic = 'force-dynamic';
+```
+
+### Step 2: Create Your Avatar Component
+
+Build a complete **React avatar component** with conversation controls:
+
+```tsx
+// components/ElevenLabsAvatar.tsx
+import { useCallback, useEffect, useState } from 'react';
+import { useConversation } from '@elevenlabs/react';
+import { 
+  MascotClient, 
+  MascotRive, 
+  useMascotElevenlabs 
+} from '@mascotbot-sdk/react';
+
+export function ElevenLabsAvatar() {
+  const [isConnecting, setIsConnecting] = useState(false);
+  
+  // Standard ElevenLabs conversation setup
+  const conversation = useConversation({
+    onConnect: () => {
+      console.log('Voice AI connected');
+      setIsConnecting(false);
+    },
+    onDisconnect: () => {
+      console.log('Voice AI disconnected');
+    },
+    onError: (error) => {
+      console.error('Conversation error:', error);
+      setIsConnecting(false);
+    },
+  });
+
+  // Enable avatar with real-time lip sync
+  const { isIntercepting, messageCount } = useMascotElevenlabs({
+    conversation,
+    debug: true,      // See WebSocket avatar data flow
+    gesture: true,    // Animated reactions on responses
+    naturalLipSync: true,  // Human-like mouth movements
+    naturalLipSyncConfig: {
+      minVisemeInterval: 50,
+      mergeWindow: 60,
+      keyVisemePreference: 0.6,
+    }
+  });
+
+  // Get signed URL for connection
+  const getSignedUrl = async () => {
+    const response = await fetch('/api/get-signed-url');
+    const data = await response.json();
+    return data.signedUrl;
+  };
+
+  // Start conversation with avatar
+  const startConversation = async () => {
+    try {
+      setIsConnecting(true);
+      
+      // Request microphone permission
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Get fresh signed URL
+      const signedUrl = await getSignedUrl();
+      
+      // Start ElevenLabs conversation
+      await conversation.startSession({ signedUrl });
+    } catch (error) {
+      console.error('Failed to start:', error);
+      setIsConnecting(false);
+    }
+  };
+
+  const stopConversation = async () => {
+    await conversation.endSession();
+  };
+
+  return (
+    <div className="flex flex-col items-center gap-4">
+      {/* Animated character for voice AI */}
+      <div className="w-96 h-96 bg-gray-100 rounded-lg">
+        <MascotClient 
+          src="https://your-cdn.com/mascot.riv"
+          artboard="Character"
+          inputs={["is_speaking", "gesture"]}
+        >
+          <MascotRive />
+        </MascotClient>
+      </div>
+      
+      {/* Voice AI controls */}
+      <div className="flex gap-2">
+        <button
+          onClick={startConversation}
+          disabled={conversation.status === 'connected' || isConnecting}
+          className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+        >
+          {isConnecting ? 'Connecting...' : 'Start Conversation'}
+        </button>
+        
+        <button
+          onClick={stopConversation}
+          disabled={conversation.status !== 'connected'}
+          className="px-4 py-2 bg-red-500 text-white rounded disabled:opacity-50"
+        >
+          End Conversation
+        </button>
+      </div>
+      
+      {/* Debug info for voice to avatar pipeline */}
+      {isIntercepting && (
+        <div className="text-sm text-gray-600">
+          Audio messages: {messageCount.audio} | 
+          Viseme messages: {messageCount.viseme}
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+### Step 3: Advanced Features
+
+#### Natural Lip Sync Configuration
+
+Create more **realistic mouth movements** by adjusting natural lip sync parameters:
+
+<Tip>
+Start with the "conversation" preset for most use cases. Adjust parameters based on your specific needs - higher `minVisemeInterval` for smoother movements, lower for more articulation.
+</Tip>
+
+```tsx
+// Different presets for various use cases
+const lipSyncPresets = {
+  // Natural conversation - best for most voice AI
+  conversation: {
+    minVisemeInterval: 60,
+    mergeWindow: 80,
+    keyVisemePreference: 0.7,
+    preserveSilence: true,
+    similarityThreshold: 0.6,
+    preserveCriticalVisemes: true,
+  },
+  
+  // Fast speech - for excited or rapid voice
+  fastSpeech: {
+    minVisemeInterval: 80,
+    mergeWindow: 100,
+    keyVisemePreference: 0.5,
+    preserveSilence: true,
+    similarityThreshold: 0.3,
+    preserveCriticalVisemes: true,
+  },
+  
+  // Clear articulation - for educational AI tutor avatar
+  educational: {
+    minVisemeInterval: 40,
+    mergeWindow: 50,
+    keyVisemePreference: 0.9,
+    preserveSilence: true,
+    similarityThreshold: 0.8,
+    preserveCriticalVisemes: true,
+  }
+};
+
+// Apply preset to your conversational AI avatar
+useMascotElevenlabs({
+  conversation,
+  naturalLipSync: true,
+  naturalLipSyncConfig: lipSyncPresets.conversation
+});
+```
+
+#### Widget Mode for Embedded Avatars
+
+Create an embeddable **AI agent with face** for your website:
+
+```tsx
+// ElevenLabs avatar widget with transparent background
+export function AvatarWidget() {
+  const [cachedUrl, setCachedUrl] = useState<string | null>(null);
+  const conversation = useConversation({
+    onConnect: () => console.log('Widget connected'),
+  });
+  
+  useMascotElevenlabs({ 
+    conversation,
+    gesture: true 
+  });
+
+  // Pre-fetch URL for instant connection
+  useEffect(() => {
+    const fetchUrl = async () => {
+      const url = await getSignedUrl();
+      setCachedUrl(url);
+    };
+    
+    fetchUrl();
+    // Refresh every 9 minutes
+    const interval = setInterval(fetchUrl, 9 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="fixed bottom-4 right-4 w-64 h-64">
+      <MascotClient 
+        src="/widget-mascot.riv"
+        artboard="Widget"
+        shouldDisableRiveListeners={false}  // Enable click interactions
+      >
+        <MascotRive showLoadingSpinner={false} />
+      </MascotClient>
+    </div>
+  );
+}
+```
+
+## API Reference
+
+### Mascot Bot Proxy API
+
+The proxy endpoint that enables avatar integration is documented in our [OpenAPI specification](/api-reference/endpoint/get-signed-url). Key points:
+
+- **Endpoint**: `POST https://api.mascot.bot/v1/get-signed-url`
+- **Authorization**: Bearer token with your Mascot Bot API key
+- **Response**: Signed WebSocket URL with viseme injection enabled
+
+### useMascotElevenlabs Hook
+
+The core hook for **ElevenLabs SDK with animated character** integration:
+
+<Info>
+This hook automatically starts WebSocket interception when mounted and handles all message processing internally. No manual setup required.
+</Info>
+
+```typescript
+interface UseMascotElevenlabsOptions {
+  conversation: ElevenlabsConversation;  // From useConversation()
+  debug?: boolean;                       // Log WebSocket data
+  gesture?: boolean;                     // Trigger animations on speech
+  naturalLipSync?: boolean;              // Human-like mouth movements
+  naturalLipSyncConfig?: {
+    minVisemeInterval?: number;          // Min time between visemes (ms)
+    mergeWindow?: number;                // Window for merging similar shapes
+    keyVisemePreference?: number;        // Preference for distinctive shapes (0-1)
+    preserveSilence?: boolean;           // Keep silence visemes
+    similarityThreshold?: number;        // Threshold for merging (0-1)
+    preserveCriticalVisemes?: boolean;   // Never skip important shapes
+  };
+}
+```
+
+## Use Cases
+
+### AI Customer Service Avatar
+Create engaging **virtual assistant with face** for support interactions:
+- Visual feedback during voice conversations
+- Emotional expressions based on context
+- Professional appearance options
+
+### Educational AI Tutor Avatar
+Perfect **voice AI for healthcare** and education:
+- Clear articulation for learning
+- Visual cues for comprehension
+- Engaging character designs
+
+### Voice AI Virtual Receptionist
+Professional **conversational interface** for businesses:
+- Welcoming visual presence
+- Natural conversation flow
+- Brand-customizable appearance
+
+## Technical Details
+
+### Proxy Endpoint Architecture
+
+The Mascot Bot proxy endpoint is essential for avatar integration:
+
+1. **Authentication**: Your app calls `/api/get-signed-url` with your credentials
+2. **Proxy Setup**: Mascot Bot creates a WebSocket proxy to ElevenLabs
+3. **Viseme Injection**: The proxy analyzes audio streams and injects viseme data
+4. **Client Connection**: Your app connects using the signed URL from step 1
+5. **Real-time Sync**: Avatar receives both audio and viseme data seamlessly
+
+<Warning>
+Do NOT connect directly to ElevenLabs WebSocket URLs. The avatar lip-sync requires viseme data that only the Mascot Bot proxy provides. Direct connections will result in no mouth movement.
+</Warning>
+
+### Voice to Animation Pipeline
+
+Our **streaming avatar data** system:
+1. WebSocket interception captures ElevenLabs messages
+2. **Viseme extraction** correlates with audio events
+3. Real-time processing adjusts timing
+4. Rive runtime renders at 120fps
+5. Natural lip sync creates human-like movements
+
+### Performance Optimization
+
+- **Low latency avatar**: Less than 50ms audio-to-visual delay
+- **Optimized rendering**: WebGL2 acceleration
+- **Minimal overhead**: Less than 1% CPU usage
+- **Scalable solution**: Handles concurrent conversations
+
+## Troubleshooting
+
+### Avatar Not Moving?
+
+<Warning>
+Ensure `useMascotElevenlabs` is called after `useConversation` and check browser console for WebSocket errors. Verify Rive file has correct input names.
+</Warning>
+
+### Lip Sync Out of Sync?
+
+<Tip>
+Use `debug: true` to see message flow, check network latency, and adjust natural lip sync parameters for better synchronization.
+</Tip>
+
+## FAQ
+
+### Can You Add Avatar to ElevenLabs?
+
+Yes! Our SDK is designed specifically for this. No ElevenLabs modifications needed. Just use our proxy endpoint to get viseme-enabled WebSocket URLs.
+
+### Why Do I Need the Mascot Bot Proxy?
+
+ElevenLabs doesn't provide viseme (mouth shape) data in their WebSocket stream. Our proxy analyzes the audio in real-time and injects synchronized viseme events, enabling perfect lip-sync.
+
+### Can I Connect Directly to ElevenLabs?
+
+While you can connect directly for audio-only features, the avatar lip-sync will NOT work without our proxy. The mouth won't move because there's no viseme data.
+
+### How to Visualize ElevenLabs Voice?
+
+Simply add our `useMascotElevenlabs` hook to your existing setup and use our proxy endpoint. The avatar automatically syncs with voice.
+
+### What is Voice Avatar SDK?
+
+It's a React library that adds visual avatars to voice AI applications, providing real-time lip synchronization through our viseme injection proxy.
+
+### ElevenLabs Lip Sync Options?
+
+We offer both exact viseme matching and natural lip sync processing for human-like movements, all processed through our proxy endpoint.
+
+## Start with ElevenLabs Avatar Today
+
+Ready to transform your voice AI? Our **open source avatar for ElevenLabs** makes it simple:
+
+<Columns cols={2}>
+  <Card title="GitHub Repository" icon="github" href="https://github.com/mascotbot/sdk">
+    View source and contribute
+  </Card>
+  <Card title="Try Voice Avatar Demo" icon="play" href="https://mascotbot-seven.vercel.app/elevenlabs-demo">
+    Experience it yourself
+  </Card>
+</Columns>
+
+Unlike pre-rendered solutions, our **real-time alternative** provides dynamic, responsive avatars that truly connect with users. Integrate in minutes and see the difference an **animated character for voice AI** can make.
+
+## Next Steps
+
+1. Get the latest SDK from [app.mascot.bot](https://app.mascot.bot) and install: `npm install ./mascotbot-sdk-react-[version].tgz`
+2. Add the `useMascotElevenlabs` hook to your app
+3. Choose or customize your avatar
+4. Deploy your enhanced **conversational AI avatar**
+
+Transform your ElevenLabs implementation today with the most **developer-friendly avatar SDK for voice AI**. Your users will love the engaging visual experience!

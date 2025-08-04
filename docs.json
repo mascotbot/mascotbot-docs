@@ -37,7 +37,10 @@
                 "icon": "react",
                 "pages": [
                   "libraries/react-sdk",
+                  "libraries/elevenlabs-avatar",
                   "libraries/mascot-call",
+                  "libraries/natural-lip-sync",
+                  "libraries/prefetching-advanced-control",
                   "libraries/react-troubleshooting"
                 ]
               },
@@ -74,7 +77,8 @@
             "group": "Endpoints",
             "pages": [
               "api-reference/endpoint/post",
-              "api-reference/endpoint/visemes-audio"
+              "api-reference/endpoint/visemes-audio",
+              "api-reference/endpoint/get-signed-url"
             ]
           },
           {
@@ -121,5 +125,23 @@
   },
   "api": {
     "openapi": "api-reference/openapi.yaml"
+  },
+  "seo": {
+    "indexing": "all",
+    "metatags": {
+      "og:type": "website",
+      "og:site_name": "Mascot Bot SDK Documentation",
+      "og:image": "https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png",
+      "og:locale": "en_US",
+      "twitter:card": "summary_large_image",
+      "twitter:site": "@mascot_bots",
+      "description": "Add AI-powered animated mascots with real-time lip sync to your applications. React SDK documentation for voice avatars and conversational AI.",
+      "keywords": "mascot bot, AI avatar, voice avatar SDK, lip sync, conversational AI, React SDK, ElevenLabs integration, ElevenLabs companion, animated characters",
+      "author": "Mascot Bot",
+      "robots": "index, follow",
+      "language": "en",
+      "viewport": "width=device-width, initial-scale=1.0",
+      "theme-color": "#000000"
+    }
   }
 }

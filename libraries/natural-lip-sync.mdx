@@ -1,0 +1,453 @@
+---
+title: Natural Lip Sync
+description: Create more realistic mouth movements with intelligent viseme processing
+---
+
+# Natural Lip Sync
+
+The Natural Lip Sync feature intelligently processes visemes (mouth shapes) to create more natural-looking speech animations. Instead of showing every single mouth shape, it merges similar shapes and preserves key distinctive movements, following professional animation principles.
+
+## Why Natural Lip Sync?
+
+Traditional lip sync can look robotic because it tries to hit every phoneme precisely. In natural speech, the mouth doesn't have time to form each shape completely - they blend together. Our algorithm mimics this natural blending for more realistic results.
+
+<Callout type="info">
+  **Animation Principle**: "Making each shape is unnatural. People talk quickly and the mouth doesn't have the time to get into each shape. They blend together, sometimes to the point where the shape doesn't change at all!"
+</Callout>
+
+## Basic Usage
+
+### With useMascotSpeech
+
+The easiest way to use natural lip sync is with the `useMascotSpeech` hook:
+
+```tsx
+import { useMascotSpeech, MascotVoices } from "@mascotbot-sdk/react";
+
+function MyComponent() {
+  const speech = useMascotSpeech({
+    apiEndpoint: "/api/visemes-audio",
+    
+    // Enable natural lip sync
+    enableNaturalLipSync: true,
+    
+    // Optional: Use default configuration
+    naturalLipSyncConfig: {
+      minVisemeInterval: 60,      // Minimum time between visemes (ms)
+      mergeWindow: 80,            // Time window for merging (ms)
+      keyVisemePreference: 0.7,   // Preference for key shapes (0-1)
+      preserveSilence: true,      // Always keep silence visemes
+      similarityThreshold: 0.6,   // Threshold for merging similar visemes
+    }
+  });
+
+  // Speech will now use natural lip sync
+  await speech.speak("Hello! This looks more natural.", {
+    voice: MascotVoices.AmericanMaleFenrir
+  });
+}
+```
+
+### With useMascotElevenlabs
+
+For ElevenLabs integration, configure it in the `useMascotElevenlabs` hook:
+
+```tsx
+import { useMascotElevenlabs } from "@mascotbot-sdk/react";
+import { useConversation } from "@elevenlabs/react";
+
+function MyComponent() {
+  const conversation = useConversation({
+    // ElevenLabs configuration
+  });
+
+  const { isIntercepting } = useMascotElevenlabs({
+    conversation,
+    naturalLipSync: true,
+    naturalLipSyncConfig: {
+      minVisemeInterval: 50,
+      mergeWindow: 60,
+      keyVisemePreference: 0.6,
+      preserveSilence: true,
+      similarityThreshold: 0.4,
+    }
+  });
+}
+```
+
+### With useMascotPlayback (Advanced)
+
+For direct control over playback, use the `useMascotPlayback` hook:
+
+```tsx
+import { useMascotPlayback } from "@mascotbot-sdk/react";
+
+function MyComponent() {
+  const playback = useMascotPlayback({
+    enableNaturalLipSync: true,
+    naturalLipSyncConfig: {
+      minVisemeInterval: 60,
+      mergeWindow: 80,
+      keyVisemePreference: 0.7,
+      preserveSilence: true,
+      similarityThreshold: 0.6,
+    }
+  });
+
+  // Add visemes manually - they'll be processed automatically
+  playback.add([
+    { offset: 0, visemeId: 0 },
+    { offset: 50, visemeId: 6 },
+    { offset: 100, visemeId: 15 },
+    // ... more visemes
+  ]);
+  
+  playback.play();
+}
+```
+
+## Configuration Parameters
+
+### minVisemeInterval
+
+**Default**: 60ms  
+**Range**: 20-120ms  
+**Purpose**: Sets the minimum time between visemes. Lower values allow more mouth movement, higher values create smoother transitions.
+
+```tsx
+// Fast, articulated speech
+minVisemeInterval: 40
+
+// Smooth, relaxed speech
+minVisemeInterval: 80
+```
+
+### mergeWindow
+
+**Default**: 80ms  
+**Range**: 40-160ms  
+**Purpose**: Time window to look ahead for similar visemes to merge. Larger windows create smoother transitions.
+
+```tsx
+// Preserve more detail
+mergeWindow: 50
+
+// More aggressive smoothing
+mergeWindow: 120
+```
+
+### keyVisemePreference
+
+**Default**: 0.7  
+**Range**: 0.0-1.0  
+**Purpose**: How strongly to preserve distinctive mouth shapes (like 'p', 'b', 'm', 'f', 'v'). Higher values keep more key shapes.
+
+```tsx
+// Natural, relaxed speech
+keyVisemePreference: 0.5
+
+// Clear, articulated speech
+keyVisemePreference: 0.9
+```
+
+### similarityThreshold
+
+**Default**: 0.6  
+**Range**: 0.0-1.0  
+**Purpose**: How similar visemes need to be to merge them. Lower values merge more aggressively.
+
+```tsx
+// Aggressive merging (smoother)
+similarityThreshold: 0.3
+
+// Conservative merging (more detail)
+similarityThreshold: 0.8
+```
+
+### preserveSilence
+
+**Default**: true  
+**Purpose**: Whether to always keep silence visemes. Recommended to leave as `true` for natural pauses.
+
+### preserveCriticalVisemes
+
+**Default**: true  
+**Purpose**: Whether to preserve critical visemes that are characteristic for speech clarity. When enabled, visemes for sounds like "u", "o", "l", "v" are never skipped, ensuring they remain visually readable even when they pass quickly in speech.
+
+## Preset Configurations
+
+### Natural Conversation
+
+For everyday conversational speech:
+
+```tsx
+const speech = useMascotSpeech({
+  apiEndpoint: "/api/visemes-audio",
+  enableNaturalLipSync: true,
+  naturalLipSyncConfig: {
+    minVisemeInterval: 60,
+    mergeWindow: 80,
+    keyVisemePreference: 0.7,
+    preserveSilence: true,
+    similarityThreshold: 0.6,
+    preserveCriticalVisemes: true,
+  }
+});
+```
+
+### Fast Speech
+
+For rapid or excited speech:
+
+```tsx
+const speech = useMascotSpeech({
+  apiEndpoint: "/api/visemes-audio",
+  enableNaturalLipSync: true,
+  naturalLipSyncConfig: {
+    minVisemeInterval: 80,    // Longer minimum interval
+    mergeWindow: 100,         // Larger merge window
+    keyVisemePreference: 0.5, // Less emphasis on key shapes
+    preserveSilence: true,
+    similarityThreshold: 0.3, // More aggressive merging
+    preserveCriticalVisemes: true,
+  }
+});
+```
+
+### Clear Articulation
+
+For slower, clearer speech (e.g., educational content):
+
+```tsx
+const speech = useMascotSpeech({
+  apiEndpoint: "/api/visemes-audio",
+  enableNaturalLipSync: true,
+  naturalLipSyncConfig: {
+    minVisemeInterval: 40,    // Shorter minimum interval
+    mergeWindow: 50,          // Smaller merge window
+    keyVisemePreference: 0.9, // Strong emphasis on key shapes
+    preserveSilence: true,
+    similarityThreshold: 0.8, // Conservative merging
+    preserveCriticalVisemes: true,
+  }
+});
+```
+
+### Minimal Movement
+
+For subtle lip movement (e.g., background characters):
+
+```tsx
+const speech = useMascotSpeech({
+  apiEndpoint: "/api/visemes-audio",
+  enableNaturalLipSync: true,
+  naturalLipSyncConfig: {
+    minVisemeInterval: 100,   // Long minimum interval
+    mergeWindow: 150,         // Very large merge window
+    keyVisemePreference: 0.3, // Low emphasis on key shapes
+    preserveSilence: true,
+    similarityThreshold: 0.2, // Very aggressive merging
+    preserveCriticalVisemes: false, // May skip critical visemes for smoother animation
+  }
+});
+```
+
+## Advanced Usage
+
+### Processing Visemes Directly
+
+You can also use the natural lip sync processor directly:
+
+```tsx
+import { NaturalLipSyncProcessor } from "@mascotbot-sdk/react";
+
+// Create processor
+const processor = new NaturalLipSyncProcessor({
+  minVisemeInterval: 60,
+  mergeWindow: 80,
+  keyVisemePreference: 0.7,
+  preserveSilence: true,
+  similarityThreshold: 0.6,
+});
+
+// Process visemes
+const originalVisemes = [
+  { offset: 0, visemeId: 0 },
+  { offset: 30, visemeId: 6 },
+  { offset: 60, visemeId: 15 },
+  // ... more visemes
+];
+
+const processedVisemes = processor.processVisemes(originalVisemes);
+console.log(`Reduced from ${originalVisemes.length} to ${processedVisemes.length} visemes`);
+
+// Update configuration dynamically
+processor.updateConfig({
+  minVisemeInterval: 80,
+  keyVisemePreference: 0.5,
+});
+```
+
+### Convenience Function
+
+For one-time processing:
+
+```tsx
+import { processNaturalLipSync } from "@mascotbot-sdk/react";
+
+const processedVisemes = processNaturalLipSync(originalVisemes, {
+  minVisemeInterval: 60,
+  mergeWindow: 80,
+  keyVisemePreference: 0.7,
+  preserveSilence: true,
+  similarityThreshold: 0.6,
+  preserveCriticalVisemes: true,
+});
+```
+
+## Performance Considerations
+
+Natural lip sync processing is lightweight and runs in real-time:
+
+- Processing typically takes less than 1ms for a typical utterance
+- No additional memory overhead beyond the processed viseme array
+- Compatible with streaming scenarios (processes chunks independently)
+
+## Troubleshooting
+
+### Too Much Movement
+
+If the mouth is moving too rapidly:
+- Increase `minVisemeInterval` (try 80-100ms)
+- Increase `mergeWindow` (try 100-120ms)
+- Decrease `similarityThreshold` (try 0.3-0.4)
+
+### Not Enough Movement
+
+If the mouth looks static:
+- Decrease `minVisemeInterval` (try 40-50ms)
+- Decrease `mergeWindow` (try 50-60ms)
+- Increase `similarityThreshold` (try 0.7-0.8)
+- Increase `keyVisemePreference` (try 0.8-0.9)
+
+### Missing Key Sounds
+
+If important sounds (like 'p' or 'f') are missing:
+- Increase `keyVisemePreference` (try 0.8-1.0)
+- Increase `similarityThreshold` (try 0.7-0.8)
+- Ensure `preserveSilence` is `true`
+
+### Critical Visemes Being Skipped
+
+If characteristic sounds like "u", "o", "l", "v" are not visible:
+- Ensure `preserveCriticalVisemes` is `true` (default)
+- This prevents these important mouth shapes from being merged away
+
+## Example: Complete Implementation
+
+Here's a complete example with UI controls:
+
+```tsx
+import { useState } from 'react';
+import { 
+  MascotClient, 
+  MascotRive, 
+  useMascotSpeech,
+  MascotVoices 
+} from "@mascotbot-sdk/react";
+
+function MascotWithNaturalLipSync() {
+  const [config, setConfig] = useState({
+    minVisemeInterval: 60,
+    mergeWindow: 80,
+    keyVisemePreference: 0.7,
+    preserveSilence: true,
+    similarityThreshold: 0.6,
+    preserveCriticalVisemes: true,
+  });
+
+  const speech = useMascotSpeech({
+    apiEndpoint: "/api/visemes-audio",
+    enableNaturalLipSync: true,
+    naturalLipSyncConfig: config,
+  });
+
+  const handleSpeak = async (text: string) => {
+    await speech.speak(text, {
+      voice: MascotVoices.AmericanMaleFenrir
+    });
+  };
+
+  return (
+    <div className="flex gap-4">
+      <div className="w-96 h-96">
+        <MascotRive />
+      </div>
+      
+      <div className="flex-1 space-y-4">
+        <button 
+          onClick={() => handleSpeak("Hello! This is natural lip sync.")}
+          className="px-4 py-2 bg-blue-500 text-white rounded"
+        >
+          Test Speech
+        </button>
+        
+        <div className="space-y-2">
+          <label>
+            Min Viseme Interval: {config.minVisemeInterval}ms
+            <input
+              type="range"
+              min="20"
+              max="120"
+              value={config.minVisemeInterval}
+              onChange={(e) => setConfig(prev => ({
+                ...prev,
+                minVisemeInterval: Number(e.target.value)
+              }))}
+              className="w-full"
+            />
+          </label>
+          
+          {/* Add more controls for other parameters */}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <MascotClient src="/path/to/mascot.riv">
+      <MascotWithNaturalLipSync />
+    </MascotClient>
+  );
+}
+```
+
+## Migration Guide
+
+To migrate existing code to use natural lip sync:
+
+```tsx
+// Before
+const speech = useMascotSpeech({
+  apiEndpoint: "/api/visemes-audio"
+});
+
+// After
+const speech = useMascotSpeech({
+  apiEndpoint: "/api/visemes-audio",
+  enableNaturalLipSync: true, // Just add this!
+  // Optional: customize settings
+  naturalLipSyncConfig: {
+    minVisemeInterval: 60,
+    mergeWindow: 80,
+    keyVisemePreference: 0.7,
+    preserveSilence: true,
+    similarityThreshold: 0.6,
+    preserveCriticalVisemes: true,
+  }
+});
+```
+
+The feature is disabled by default, so existing implementations continue to work unchanged.
