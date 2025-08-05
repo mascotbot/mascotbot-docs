@@ -71,6 +71,10 @@ playback.setSpeakingStateManually(true);
 
 ### Basic Prefetching
 
+<Note>
+The `playAudioFromPrefetchedData` function shown below is not included in the SDK - you need to implement it yourself. See the [complete implementation](#playing-prefetched-audio) in the Examples section.
+</Note>
+
 ```tsx
 import { useMascotSpeech, useMascotPlayback } from '@mascotbot-sdk/react';
 
@@ -101,6 +105,7 @@ function PrefetchExample() {
     playback.play();
 
     // 4. Play audio from prefetched data
+    // NOTE: You must implement this function - see Examples section
     await playAudioFromPrefetchedData(prefetchedData);
 
     // 5. Reset state when done
@@ -145,11 +150,17 @@ const prefetchedData = await speech.prefetchAudio(
   }
 ): Promise<{
   audioData: {
-    audioEvents: Map<number, AudioEvent>;
-    visemesBySequence: Map<number, VisemeData[]>;
+    audioEvents: Map<number, AudioEvent>;  // Base64-encoded PCM audio chunks
+    visemesBySequence: Map<number, VisemeData[]>;  // Viseme timing data
   };
-  duration: number;
+  duration: number;  // Total duration in milliseconds
 }>;
+
+// AudioEvent structure
+interface AudioEvent {
+  data: string;        // Base64-encoded PCM audio data
+  sample_rate: number; // Sample rate (e.g., 24000)
+}
 ```
 
 ### useMascotPlayback Methods
@@ -176,30 +187,39 @@ interface MascotPlaybackMethods {
 The most common use case for prefetching is video export, where all audio must be loaded before rendering begins:
 
 ```tsx
-async function exportVideo(scenes: Scene[]) {
-  // 1. Initialize export state
-  const audioCache = new Map<string, PrefetchedData>();
+async function exportVideo(items: Array<{ text: string, voice: string }>) {
+  // 1. Create shared AudioContext for all exports
+  const sharedAudioContext = new AudioContext();
+  const audioCache = new Map<number, PrefetchedData>();
   
-  // 2. Prefetch all scene audio in parallel
-  const prefetchPromises = scenes.map(async (scene) => {
-    if (scene.voiceover?.text) {
-      const data = await speech.prefetchAudio(scene.voiceover.text, {
-        ttsParams: {
-          voice: scene.voiceover.voice,
-          speed: scene.voiceover.speed
-        }
-      });
-      audioCache.set(scene.id, data);
-    }
+  // 2. Prefetch all audio in parallel
+  const prefetchPromises = items.map(async (item, index) => {
+    const data = await speech.prefetchAudio(item.text, {
+      ttsParams: {
+        voice: item.voice,
+        speed: 1.0
+      }
+    });
+    audioCache.set(index, data);
   });
 
   await Promise.all(prefetchPromises);
 
   // 3. Render video with cached audio
-  for (const scene of scenes) {
-    const prefetchedData = audioCache.get(scene.id);
+  for (let i = 0; i < items.length; i++) {
+    const prefetchedData = audioCache.get(i);
     if (prefetchedData) {
-      await renderSceneWithAudio(scene, prefetchedData);
+      // Load visemes for lip sync
+      playback.loadPrefetchedData(prefetchedData.audioData.visemesBySequence);
+      playback.setSpeakingStateManually(true);
+      playback.play();
+      
+      // Play audio
+      await playAudioFromPrefetchedData(prefetchedData, sharedAudioContext);
+      
+      // Reset after playback
+      playback.setSpeakingStateManually(false);
+      playback.reset();
     }
   }
 }
@@ -304,11 +324,114 @@ function VoiceComparison({ text }: { text: string }) {
 
 ### Playing Prefetched Audio
 
-Here's a complete implementation of playing audio from prefetched data:
+<Warning>
+The `playAudioFromPrefetchedData` function is NOT included in the SDK. You must implement it yourself using the Web Audio API. Below is the exact implementation used in the Mascot Bot app for video exports.
+</Warning>
+
+<Info>
+**Why isn't this in the SDK?** The SDK focuses on real-time streaming use cases. Prefetching is an advanced pattern where you may want custom control over audio playback timing, audio context management, and integration with your app's audio system. By implementing this yourself, you have full control over these aspects.
+</Info>
+
+#### Complete Implementation
+
+Here's a production-ready implementation for playing prefetched audio:
 
 ```tsx
+/**
+ * Create audio buffer from pre-fetched audio data
+ */
+async function createAudioBufferFromData(
+  audioData: any,
+  audioContext: AudioContext
+): Promise<AudioBuffer | null> {
+  try {
+    // Check if we have valid audio data
+    if (!audioData || !audioData.audioEvents || audioData.audioEvents.size === 0) {
+      console.warn('[Export] No audio events found in audio data');
+      return null;
+    }
+
+    const audioBuffers: AudioBuffer[] = [];
+    
+    // Process each audio event in the Map
+    for (const [sequence, audioEvent] of audioData.audioEvents) {
+      if (!audioEvent.data) {
+        console.warn(`[Export] No data in audio event sequence ${sequence}`);
+        continue;
+      }
+
+      // Decode base64 to binary
+      const binaryString = atob(audioEvent.data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      
+      const samplesCount = bytes.length / 2;
+      
+      // Skip if no samples
+      if (samplesCount === 0) {
+        console.warn(`[Export] Audio event sequence ${sequence} has no samples`);
+        continue;
+      }
+      
+      // Convert bytes to Int16 PCM (little-endian)
+      const int16Array = new Int16Array(samplesCount);
+      for (let i = 0; i < samplesCount; i++) {
+        const low = bytes[i * 2];
+        const high = bytes[i * 2 + 1];
+        int16Array[i] = (high << 8) | low;
+      }
+      
+      // Create AudioBuffer with proper sample rate
+      const sampleRate = audioEvent.sample_rate || 44100;
+      const audioBuffer = audioContext.createBuffer(1, int16Array.length, sampleRate);
+      const channelData = audioBuffer.getChannelData(0);
+      
+      // Convert Int16 to Float32 (-1.0 to 1.0 range)
+      for (let i = 0; i < int16Array.length; i++) {
+        channelData[i] = int16Array[i] / 32768.0;
+      }
+      
+      audioBuffers.push(audioBuffer);
+    }
+    
+    // Check if we have any valid buffers
+    if (audioBuffers.length === 0) {
+      console.warn('[Export] No valid audio buffers created from audio events');
+      return null;
+    }
+    
+    // Combine all audio buffers into one
+    const totalLength = audioBuffers.reduce((acc, buf) => acc + buf.length, 0);
+    
+    if (totalLength === 0) {
+      console.warn('[Export] Total audio buffer length is 0');
+      return null;
+    }
+    
+    const sampleRate = audioBuffers[0]?.sampleRate || 44100;
+    const combinedBuffer = audioContext.createBuffer(1, totalLength, sampleRate);
+    const combinedChannelData = combinedBuffer.getChannelData(0);
+    
+    let offset = 0;
+    for (const buffer of audioBuffers) {
+      combinedChannelData.set(buffer.getChannelData(0), offset);
+      offset += buffer.length;
+    }
+    
+    return combinedBuffer;
+  } catch (error) {
+    console.error('[Export] Failed to create audio buffer:', error);
+    return null;
+  }
+}
+
+/**
+ * Play audio from prefetched data
+ */
 async function playAudioFromPrefetchedData(
-  prefetchedData: PrefetchedData,
+  prefetchedData: PreFetchedData,
   audioContext?: AudioContext
 ) {
   // Create or reuse AudioContext
@@ -319,7 +442,7 @@ async function playAudioFromPrefetchedData(
     await ctx.resume();
   }
   
-  // Convert base64 audio data to AudioBuffer
+  // Convert prefetched data to audio buffer
   const audioBuffer = await createAudioBufferFromData(
     prefetchedData.audioData,
     ctx
@@ -340,59 +463,51 @@ async function playAudioFromPrefetchedData(
     source.start(0);
   });
 }
+```
 
-async function createAudioBufferFromData(
-  audioData: { audioEvents: Map<number, AudioEvent> },
-  audioContext: AudioContext
-): Promise<AudioBuffer | null> {
-  const audioBuffers: AudioBuffer[] = [];
+### Simple Audio Playback Implementation
+
+If you need a simpler version without error handling:
+
+```tsx
+// Minimal implementation for quick testing
+async function playAudioFromPrefetchedData(prefetchedData: any) {
+  const audioContext = new AudioContext();
   
-  // Process each audio event
-  for (const [sequence, audioEvent] of audioData.audioEvents) {
-    // Decode base64 to binary
-    const binaryString = atob(audioEvent.data);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    
-    // Convert to Int16 PCM
-    const int16Array = new Int16Array(bytes.length / 2);
-    for (let i = 0; i < int16Array.length; i++) {
-      const low = bytes[i * 2];
-      const high = bytes[i * 2 + 1];
-      int16Array[i] = (high << 8) | low;
-    }
-    
-    // Create AudioBuffer
-    const buffer = audioContext.createBuffer(
-      1, // mono
-      int16Array.length,
-      audioEvent.sample_rate
-    );
-    
-    // Convert to Float32
-    const channelData = buffer.getChannelData(0);
-    for (let i = 0; i < int16Array.length; i++) {
-      channelData[i] = int16Array[i] / 32768.0;
-    }
-    
-    audioBuffers.push(buffer);
+  // Get first audio event (simplified - production code should handle all events)
+  const firstAudioEvent = prefetchedData.audioData.audioEvents.get(0);
+  if (!firstAudioEvent) return;
+  
+  // Decode base64 to ArrayBuffer
+  const binaryString = atob(firstAudioEvent.data);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
   }
   
-  // Combine all buffers
-  const totalLength = audioBuffers.reduce((acc, buf) => acc + buf.length, 0);
-  const sampleRate = audioBuffers[0]?.sampleRate || 44100;
-  const combinedBuffer = audioContext.createBuffer(1, totalLength, sampleRate);
-  const combinedData = combinedBuffer.getChannelData(0);
+  // Convert to Float32 audio data
+  const audioBuffer = audioContext.createBuffer(
+    1, // mono
+    bytes.length / 2, // 16-bit PCM
+    firstAudioEvent.sample_rate
+  );
   
-  let offset = 0;
-  for (const buffer of audioBuffers) {
-    combinedData.set(buffer.getChannelData(0), offset);
-    offset += buffer.length;
+  const channelData = audioBuffer.getChannelData(0);
+  for (let i = 0; i < bytes.length / 2; i++) {
+    const int16 = (bytes[i * 2 + 1] << 8) | bytes[i * 2];
+    channelData[i] = int16 / 32768.0;
   }
   
-  return combinedBuffer;
+  // Play the audio
+  const source = audioContext.createBufferSource();
+  source.buffer = audioBuffer;
+  source.connect(audioContext.destination);
+  source.start();
+  
+  // Wait for playback to complete
+  return new Promise(resolve => {
+    source.onended = resolve;
+  });
 }
 ```
 
