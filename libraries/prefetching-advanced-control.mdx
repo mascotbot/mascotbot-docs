@@ -72,15 +72,66 @@ playback.setSpeakingStateManually(true);
 ### Basic Prefetching
 
 <Note>
-The `playAudioFromPrefetchedData` function shown below is not included in the SDK - you need to implement it yourself. See the [complete implementation](#playing-prefetched-audio) in the Examples section.
+The `playAudioFromPrefetchedData` function shown below is not included in the SDK - you need to implement it yourself. See the [complete implementation](#audio-playback-implementation) in the Examples section.
 </Note>
 
+<Info>
+**About the API endpoint**: The `apiEndpoint` should point to your proxy endpoint that calls the Mascot Bot API. Never call `https://api.mascot.bot/v1/visemes-audio` directly from the client as this would expose your API keys.
+
+Create a proxy endpoint (e.g., `/api/visemes-audio`) that:
+1. Receives requests from your client
+2. Adds your Mascot Bot API key to the Authorization header
+3. Forwards the request to `https://api.mascot.bot/v1/visemes-audio`
+4. Streams the response back to the client
+
+See the [API documentation](/api-reference/endpoint/visemes-audio) for endpoint details.
+</Info>
+
+<Accordion title="Example: Next.js Proxy Endpoint">
+```typescript
+// app/api/visemes-audio/route.ts
+import { NextRequest } from 'next/server';
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    
+    // Forward request to Mascot Bot API with authentication
+    const response = await fetch('https://api.mascot.bot/v1/visemes-audio', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.MASCOT_BOT_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API error: ${response.statusText}`);
+    }
+    
+    // Stream the SSE response back to client
+    return new Response(response.body, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    });
+  } catch (error) {
+    console.error('Proxy error:', error);
+    return new Response('Internal Server Error', { status: 500 });
+  }
+}
+```
+</Accordion>
+
 ```tsx
-import { useMascotSpeech, useMascotPlayback } from '@mascotbot-sdk/react';
+import { useMascotSpeech, useMascotPlayback, MascotClient, MascotRive } from '@mascotbot-sdk/react';
 
 function PrefetchExample() {
   const speech = useMascotSpeech({
-    apiEndpoint: "/api/visemes-audio",
+    apiEndpoint: "/api/visemes-audio", // Your proxy endpoint (NOT the direct Mascot Bot API)
     disableAutomaticSpeakingState: true // Critical for prefetching
   });
 
@@ -105,7 +156,6 @@ function PrefetchExample() {
     playback.play();
 
     // 4. Play audio from prefetched data
-    // NOTE: You must implement this function - see Examples section
     await playAudioFromPrefetchedData(prefetchedData);
 
     // 5. Reset state when done
@@ -114,9 +164,20 @@ function PrefetchExample() {
   };
 
   return (
-    <button onClick={handlePrefetchAndPlay}>
-      Prefetch & Play
-    </button>
+    <div>
+      {/* The mascot visual component */}
+      <MascotClient 
+        src="/mascot.riv"  // Your Rive file
+        artboard="Character"
+        inputs={["is_speaking"]}  // Required for lip sync
+      >
+        <MascotRive />
+      </MascotClient>
+      
+      <button onClick={handlePrefetchAndPlay}>
+        Prefetch & Play
+      </button>
+    </div>
   );
 }
 ```
@@ -127,25 +188,36 @@ function PrefetchExample() {
 
 ```typescript
 interface MascotSpeechOptions {
-  // ... standard options
-
-  // Disable automatic speaking state management
-  // Essential for prefetching workflows
-  disableAutomaticSpeakingState?: boolean;
+  apiEndpoint: string;                      // Required: Your proxy endpoint (e.g., "/api/visemes-audio")
+  apiKey?: string;                          // API key - never use client-side, use proxy instead
+  disableAutomaticSpeakingState?: boolean;  // Disable auto speaking state - required for prefetching
+  defaultVoice?: string;                    // Default: "am_fenrir"
+  bufferSize?: number;                      // Streaming buffer size. Default: 1
+  enableTimingEvents?: boolean;             // Performance monitoring. Default: true
+  debug?: boolean;                          // Debug logging. Default: false
 }
 ```
 
 ### prefetchAudio Method
 
+The `prefetchAudio` method is **only** available through the `useMascotSpeech` hook. You cannot use it standalone:
+
 ```typescript
+// First, get the speech object from the hook
+const speech = useMascotSpeech({
+  apiEndpoint: "/api/visemes-audio",
+  disableAutomaticSpeakingState: true
+});
+
+// Then use the prefetchAudio method
 const prefetchedData = await speech.prefetchAudio(
   text: string,
   options?: {
     ttsParams?: {
-      tts_engine?: string;
-      voice?: string;
-      speed?: number;
-      tts_api_key?: string;
+      tts_engine?: string;      // 'mascotbot' (default), 'elevenlabs', 'cartesia'
+      voice?: string;           // Voice ID specific to the chosen engine
+      speed?: number;           // Playback speed (e.g., 1.0 for normal)
+      tts_api_key?: string;     // API key for external TTS providers
     }
   }
 ): Promise<{
@@ -187,41 +259,138 @@ interface MascotPlaybackMethods {
 The most common use case for prefetching is video export, where all audio must be loaded before rendering begins:
 
 ```tsx
-async function exportVideo(items: Array<{ text: string, voice: string }>) {
-  // 1. Create shared AudioContext for all exports
-  const sharedAudioContext = new AudioContext();
-  const audioCache = new Map<number, PrefetchedData>();
+import { useMascotSpeech, useMascotPlayback } from '@mascotbot-sdk/react';
+
+// Type definition for data returned by speech.prefetchAudio()
+interface PrefetchedData {
+  audioData: {
+    audioEvents: Map<number, { data: string; sample_rate: number }>;
+    visemesBySequence: Map<number, any[]>;
+  };
+  duration: number;
+}
+
+// Implementation for playing audio from prefetched data
+async function playAudioFromPrefetchedData(
+  prefetchedData: PrefetchedData,
+  audioContext?: AudioContext
+): Promise<void> {
+  const ctx = audioContext || new AudioContext();
   
-  // 2. Prefetch all audio in parallel
-  const prefetchPromises = items.map(async (item, index) => {
-    const data = await speech.prefetchAudio(item.text, {
-      ttsParams: {
-        voice: item.voice,
-        speed: 1.0
-      }
-    });
-    audioCache.set(index, data);
+  if (ctx.state === 'suspended') {
+    await ctx.resume();
+  }
+  
+  const audioBuffers: AudioBuffer[] = [];
+  
+  for (const [sequence, audioEvent] of prefetchedData.audioData.audioEvents) {
+    if (!audioEvent.data) continue;
+    
+    const binaryString = atob(audioEvent.data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    const int16Array = new Int16Array(bytes.length / 2);
+    for (let i = 0; i < int16Array.length; i++) {
+      const low = bytes[i * 2];
+      const high = bytes[i * 2 + 1];
+      int16Array[i] = (high << 8) | low;
+    }
+    
+    const sampleRate = audioEvent.sample_rate || 44100;
+    const audioBuffer = ctx.createBuffer(1, int16Array.length, sampleRate);
+    const channelData = audioBuffer.getChannelData(0);
+    
+    for (let i = 0; i < int16Array.length; i++) {
+      channelData[i] = int16Array[i] / 32768.0;
+    }
+    
+    audioBuffers.push(audioBuffer);
+  }
+  
+  if (audioBuffers.length === 0) {
+    throw new Error('No audio data to play');
+  }
+  
+  const totalLength = audioBuffers.reduce((acc, buf) => acc + buf.length, 0);
+  const sampleRate = audioBuffers[0].sampleRate;
+  const combinedBuffer = ctx.createBuffer(1, totalLength, sampleRate);
+  const combinedData = combinedBuffer.getChannelData(0);
+  
+  let offset = 0;
+  for (const buffer of audioBuffers) {
+    combinedData.set(buffer.getChannelData(0), offset);
+    offset += buffer.length;
+  }
+  
+  const source = ctx.createBufferSource();
+  source.buffer = combinedBuffer;
+  source.connect(ctx.destination);
+  
+  return new Promise<void>((resolve) => {
+    source.onended = () => resolve();
+    source.start(0);
+  });
+}
+
+function VideoExporter() {
+  // Initialize hooks with proper configuration
+  const speech = useMascotSpeech({
+    apiEndpoint: "/api/visemes-audio", // Your proxy endpoint (NOT the direct Mascot Bot API)
+    disableAutomaticSpeakingState: true // Required for prefetching
+  });
+  
+  const playback = useMascotPlayback({
+    manualSpeakingStateControl: true // Required for manual control
   });
 
-  await Promise.all(prefetchPromises);
+  async function exportVideo(items: Array<{ text: string, voice: string }>) {
+    // 1. Create shared AudioContext for all exports
+    const sharedAudioContext = new AudioContext();
+    const audioCache = new Map<number, PrefetchedData>();
+    
+    // 2. Prefetch all audio in parallel
+    const prefetchPromises = items.map(async (item, index) => {
+      const data = await speech.prefetchAudio(item.text, {
+        ttsParams: {
+          voice: item.voice,
+          speed: 1.0
+        }
+      });
+      audioCache.set(index, data);
+    });
 
-  // 3. Render video with cached audio
-  for (let i = 0; i < items.length; i++) {
-    const prefetchedData = audioCache.get(i);
-    if (prefetchedData) {
-      // Load visemes for lip sync
-      playback.loadPrefetchedData(prefetchedData.audioData.visemesBySequence);
-      playback.setSpeakingStateManually(true);
-      playback.play();
-      
-      // Play audio
-      await playAudioFromPrefetchedData(prefetchedData, sharedAudioContext);
-      
-      // Reset after playback
-      playback.setSpeakingStateManually(false);
-      playback.reset();
+    await Promise.all(prefetchPromises);
+
+    // 3. Render video with cached audio
+    for (let i = 0; i < items.length; i++) {
+      const prefetchedData = audioCache.get(i);
+      if (prefetchedData) {
+        // Load visemes for lip sync animation
+        playback.loadPrefetchedData(prefetchedData.audioData.visemesBySequence);
+        playback.setSpeakingStateManually(true);
+        playback.play(); // This starts the visual animation
+        
+        // Play audio separately
+        await playAudioFromPrefetchedData(prefetchedData, sharedAudioContext);
+        
+        // Reset after playback
+        playback.setSpeakingStateManually(false);
+        playback.reset();
+      }
     }
   }
+  
+  return (
+    <button onClick={() => exportVideo([
+      { text: "Hello world", voice: "en-US-1" },
+      { text: "Welcome to our app", voice: "en-US-2" }
+    ])}>
+      Export Video
+    </button>
+  );
 }
 ```
 
@@ -230,29 +399,114 @@ async function exportVideo(items: Array<{ text: string, voice: string }>) {
 Prefetching enables smooth transitions between multiple speech segments:
 
 ```tsx
+import { useState, useEffect } from 'react';
+import { useMascotSpeech, useMascotPlayback } from '@mascotbot-sdk/react';
+
+// Type definition for data returned by speech.prefetchAudio()
+interface PrefetchedData {
+  audioData: {
+    audioEvents: Map<number, { data: string; sample_rate: number }>;
+    visemesBySequence: Map<number, any[]>;
+  };
+  duration: number;
+}
+
+// Simplified implementation for playing audio
+async function playAudioFromPrefetchedData(
+  prefetchedData: PrefetchedData,
+  audioContext?: AudioContext
+): Promise<void> {
+  const ctx = audioContext || new AudioContext();
+  if (ctx.state === 'suspended') await ctx.resume();
+  
+  const audioBuffers: AudioBuffer[] = [];
+  
+  for (const [_, audioEvent] of prefetchedData.audioData.audioEvents) {
+    if (!audioEvent.data) continue;
+    
+    const binaryString = atob(audioEvent.data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    const int16Array = new Int16Array(bytes.length / 2);
+    for (let i = 0; i < int16Array.length; i++) {
+      const low = bytes[i * 2];
+      const high = bytes[i * 2 + 1];
+      int16Array[i] = (high << 8) | low;
+    }
+    
+    const audioBuffer = ctx.createBuffer(1, int16Array.length, audioEvent.sample_rate || 44100);
+    const channelData = audioBuffer.getChannelData(0);
+    for (let i = 0; i < int16Array.length; i++) {
+      channelData[i] = int16Array[i] / 32768.0;
+    }
+    
+    audioBuffers.push(audioBuffer);
+  }
+  
+  if (audioBuffers.length === 0) throw new Error('No audio data');
+  
+  const totalLength = audioBuffers.reduce((acc, buf) => acc + buf.length, 0);
+  const combinedBuffer = ctx.createBuffer(1, totalLength, audioBuffers[0].sampleRate);
+  const combinedData = combinedBuffer.getChannelData(0);
+  
+  let offset = 0;
+  for (const buffer of audioBuffers) {
+    combinedData.set(buffer.getChannelData(0), offset);
+    offset += buffer.length;
+  }
+  
+  const source = ctx.createBufferSource();
+  source.buffer = combinedBuffer;
+  source.connect(ctx.destination);
+  
+  return new Promise<void>((resolve) => {
+    source.onended = resolve;
+    source.start(0);
+  });
+}
+
 function SpeechQueue({ items }: { items: string[] }) {
   const [queue, setQueue] = useState<PrefetchedData[]>([]);
+  
+  // Initialize hooks
+  const speech = useMascotSpeech({
+    apiEndpoint: "/api/visemes-audio", // Your proxy endpoint (NOT the direct Mascot Bot API)
+    disableAutomaticSpeakingState: true
+  });
+  
+  const playback = useMascotPlayback({
+    manualSpeakingStateControl: true
+  });
   
   // Prefetch all items on mount
   useEffect(() => {
     const prefetchAll = async () => {
+      // Prefetch in parallel for better performance
       const data = await Promise.all(
         items.map(text => speech.prefetchAudio(text))
       );
       setQueue(data);
     };
     prefetchAll();
-  }, [items]);
+  }, [items, speech]);
 
   // Play queue sequentially
   const playQueue = async () => {
+    const audioContext = new AudioContext();
+    
     for (const data of queue) {
+      // Start visual animation
       playback.loadPrefetchedData(data.audioData.visemesBySequence);
       playback.setSpeakingStateManually(true);
       playback.play();
       
-      await playAudioFromPrefetchedData(data);
+      // Play audio
+      await playAudioFromPrefetchedData(data, audioContext);
       
+      // Stop animation
       playback.setSpeakingStateManually(false);
       playback.reset();
       
@@ -270,17 +524,117 @@ function SpeechQueue({ items }: { items: string[] }) {
 Prefetch multiple voice options for instant comparison:
 
 ```tsx
+import { useState, useEffect, useRef } from 'react';
+import { useMascotSpeech, useMascotPlayback } from '@mascotbot-sdk/react';
+
+// Type definition for data returned by speech.prefetchAudio()
+interface PrefetchedData {
+  audioData: {
+    audioEvents: Map<number, { data: string; sample_rate: number }>;
+    visemesBySequence: Map<number, any[]>;
+  };
+  duration: number;
+}
+
+// Audio playback implementation
+async function playAudioFromPrefetchedData(
+  prefetchedData: PrefetchedData,
+  audioContext: AudioContext
+): Promise<void> {
+  if (audioContext.state === 'suspended') {
+    await audioContext.resume();
+  }
+  
+  const audioBuffers: AudioBuffer[] = [];
+  
+  for (const [_, audioEvent] of prefetchedData.audioData.audioEvents) {
+    if (!audioEvent.data) continue;
+    
+    // Decode base64
+    const binaryString = atob(audioEvent.data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    // Convert to Int16
+    const int16Array = new Int16Array(bytes.length / 2);
+    for (let i = 0; i < int16Array.length; i++) {
+      const low = bytes[i * 2];
+      const high = bytes[i * 2 + 1];
+      int16Array[i] = (high << 8) | low;
+    }
+    
+    // Create AudioBuffer
+    const audioBuffer = audioContext.createBuffer(
+      1, 
+      int16Array.length, 
+      audioEvent.sample_rate || 44100
+    );
+    const channelData = audioBuffer.getChannelData(0);
+    for (let i = 0; i < int16Array.length; i++) {
+      channelData[i] = int16Array[i] / 32768.0;
+    }
+    
+    audioBuffers.push(audioBuffer);
+  }
+  
+  if (audioBuffers.length === 0) {
+    throw new Error('No audio data to play');
+  }
+  
+  // Combine buffers
+  const totalLength = audioBuffers.reduce((acc, buf) => acc + buf.length, 0);
+  const combinedBuffer = audioContext.createBuffer(
+    1, 
+    totalLength, 
+    audioBuffers[0].sampleRate
+  );
+  const combinedData = combinedBuffer.getChannelData(0);
+  
+  let offset = 0;
+  for (const buffer of audioBuffers) {
+    combinedData.set(buffer.getChannelData(0), offset);
+    offset += buffer.length;
+  }
+  
+  // Play audio
+  const source = audioContext.createBufferSource();
+  source.buffer = combinedBuffer;
+  source.connect(audioContext.destination);
+  
+  return new Promise<void>((resolve) => {
+    source.onended = resolve;
+    source.start(0);
+  });
+}
+
+// Define voices outside component to avoid recreating on each render
+const AVAILABLE_VOICES = ['en-US-1', 'en-US-2', 'en-UK-1'];
+
 function VoiceComparison({ text }: { text: string }) {
   const [voiceData, setVoiceData] = useState<Map<string, PrefetchedData>>();
+  const audioContextRef = useRef<AudioContext>();
   
-  const voices = ['en-US-1', 'en-US-2', 'en-UK-1'];
+  // Initialize hooks
+  const speech = useMascotSpeech({
+    apiEndpoint: "/api/visemes-audio", // Your proxy endpoint (NOT the direct Mascot Bot API)
+    disableAutomaticSpeakingState: true
+  });
+  
+  const playback = useMascotPlayback({
+    manualSpeakingStateControl: true
+  });
   
   useEffect(() => {
+    // Create AudioContext once
+    audioContextRef.current = new AudioContext();
+    
     const prefetchVoices = async () => {
-      const data = new Map();
+      const data = new Map<string, PrefetchedData>();
       
       await Promise.all(
-        voices.map(async (voice) => {
+        AVAILABLE_VOICES.map(async (voice) => {
           const prefetched = await speech.prefetchAudio(text, {
             ttsParams: { voice }
           });
@@ -292,17 +646,20 @@ function VoiceComparison({ text }: { text: string }) {
     };
     
     prefetchVoices();
-  }, [text]);
+  }, [text, speech]); // AVAILABLE_VOICES is constant, no need in deps
 
   const playVoice = async (voice: string) => {
     const data = voiceData?.get(voice);
-    if (data) {
+    if (data && audioContextRef.current) {
+      // Start visual animation
       playback.loadPrefetchedData(data.audioData.visemesBySequence);
       playback.setSpeakingStateManually(true);
       playback.play();
       
-      await playAudioFromPrefetchedData(data);
+      // Play audio
+      await playAudioFromPrefetchedData(data, audioContextRef.current);
       
+      // Stop animation
       playback.setSpeakingStateManually(false);
       playback.reset();
     }
@@ -310,7 +667,7 @@ function VoiceComparison({ text }: { text: string }) {
 
   return (
     <div>
-      {voices.map(voice => (
+      {AVAILABLE_VOICES.map(voice => (
         <button key={voice} onClick={() => playVoice(voice)}>
           Play {voice}
         </button>
@@ -325,255 +682,300 @@ function VoiceComparison({ text }: { text: string }) {
 ### Playing Prefetched Audio
 
 <Warning>
-The `playAudioFromPrefetchedData` function is NOT included in the SDK. You must implement it yourself using the Web Audio API. Below is the exact implementation used in the Mascot Bot app for video exports.
+The `playAudioFromPrefetchedData` function is NOT included in the SDK. You must implement it yourself using the Web Audio API.
 </Warning>
 
 <Info>
 **Why isn't this in the SDK?** The SDK focuses on real-time streaming use cases. Prefetching is an advanced pattern where you may want custom control over audio playback timing, audio context management, and integration with your app's audio system. By implementing this yourself, you have full control over these aspects.
 </Info>
 
-#### Complete Implementation
+<Note>
+**Important clarification about `useMascotPlayback`**: This hook is for controlling the mascot's visual animation (lip sync) using the viseme data. It does NOT play audio. You need to implement audio playback separately using the Web Audio API.
+</Note>
 
-Here's a production-ready implementation for playing prefetched audio:
+### Audio Playback Implementation
+
+Since the SDK doesn't include audio playback for prefetched data, you need to implement it yourself. Here's a complete implementation with proper error handling:
 
 ```tsx
-/**
- * Create audio buffer from pre-fetched audio data
- */
-async function createAudioBufferFromData(
-  audioData: any,
-  audioContext: AudioContext
-): Promise<AudioBuffer | null> {
-  try {
-    // Check if we have valid audio data
-    if (!audioData || !audioData.audioEvents || audioData.audioEvents.size === 0) {
-      console.warn('[Export] No audio events found in audio data');
-      return null;
-    }
-
-    const audioBuffers: AudioBuffer[] = [];
-    
-    // Process each audio event in the Map
-    for (const [sequence, audioEvent] of audioData.audioEvents) {
-      if (!audioEvent.data) {
-        console.warn(`[Export] No data in audio event sequence ${sequence}`);
-        continue;
-      }
-
-      // Decode base64 to binary
-      const binaryString = atob(audioEvent.data);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-      
-      const samplesCount = bytes.length / 2;
-      
-      // Skip if no samples
-      if (samplesCount === 0) {
-        console.warn(`[Export] Audio event sequence ${sequence} has no samples`);
-        continue;
-      }
-      
-      // Convert bytes to Int16 PCM (little-endian)
-      const int16Array = new Int16Array(samplesCount);
-      for (let i = 0; i < samplesCount; i++) {
-        const low = bytes[i * 2];
-        const high = bytes[i * 2 + 1];
-        int16Array[i] = (high << 8) | low;
-      }
-      
-      // Create AudioBuffer with proper sample rate
-      const sampleRate = audioEvent.sample_rate || 44100;
-      const audioBuffer = audioContext.createBuffer(1, int16Array.length, sampleRate);
-      const channelData = audioBuffer.getChannelData(0);
-      
-      // Convert Int16 to Float32 (-1.0 to 1.0 range)
-      for (let i = 0; i < int16Array.length; i++) {
-        channelData[i] = int16Array[i] / 32768.0;
-      }
-      
-      audioBuffers.push(audioBuffer);
-    }
-    
-    // Check if we have any valid buffers
-    if (audioBuffers.length === 0) {
-      console.warn('[Export] No valid audio buffers created from audio events');
-      return null;
-    }
-    
-    // Combine all audio buffers into one
-    const totalLength = audioBuffers.reduce((acc, buf) => acc + buf.length, 0);
-    
-    if (totalLength === 0) {
-      console.warn('[Export] Total audio buffer length is 0');
-      return null;
-    }
-    
-    const sampleRate = audioBuffers[0]?.sampleRate || 44100;
-    const combinedBuffer = audioContext.createBuffer(1, totalLength, sampleRate);
-    const combinedChannelData = combinedBuffer.getChannelData(0);
-    
-    let offset = 0;
-    for (const buffer of audioBuffers) {
-      combinedChannelData.set(buffer.getChannelData(0), offset);
-      offset += buffer.length;
-    }
-    
-    return combinedBuffer;
-  } catch (error) {
-    console.error('[Export] Failed to create audio buffer:', error);
-    return null;
-  }
+// Type definition for prefetched data
+interface PrefetchedData {
+  audioData: {
+    audioEvents: Map<number, { data: string; sample_rate: number }>;
+    visemesBySequence: Map<number, any[]>;
+  };
+  duration: number;
 }
 
-/**
- * Play audio from prefetched data
- */
+// Production-ready implementation with full error handling
 async function playAudioFromPrefetchedData(
-  prefetchedData: PreFetchedData,
+  prefetchedData: PrefetchedData,
   audioContext?: AudioContext
-) {
-  // Create or reuse AudioContext
+): Promise<void> {
   const ctx = audioContext || new AudioContext();
   
-  // Ensure context is running
   if (ctx.state === 'suspended') {
     await ctx.resume();
   }
   
-  // Convert prefetched data to audio buffer
-  const audioBuffer = await createAudioBufferFromData(
-    prefetchedData.audioData,
-    ctx
-  );
+  // Create audio buffer from all audio events
+  const audioBuffers: AudioBuffer[] = [];
   
-  if (!audioBuffer) {
-    throw new Error('Failed to create audio buffer');
+  for (const [sequence, audioEvent] of prefetchedData.audioData.audioEvents) {
+    if (!audioEvent.data) continue;
+    
+    // Decode base64 to binary
+    const binaryString = atob(audioEvent.data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    // Convert to Int16 PCM (little-endian)
+    const int16Array = new Int16Array(bytes.length / 2);
+    for (let i = 0; i < int16Array.length; i++) {
+      const low = bytes[i * 2];
+      const high = bytes[i * 2 + 1];
+      int16Array[i] = (high << 8) | low;
+    }
+    
+    // Create AudioBuffer
+    const sampleRate = audioEvent.sample_rate || 44100;
+    const audioBuffer = ctx.createBuffer(1, int16Array.length, sampleRate);
+    const channelData = audioBuffer.getChannelData(0);
+    
+    // Convert Int16 to Float32
+    for (let i = 0; i < int16Array.length; i++) {
+      channelData[i] = int16Array[i] / 32768.0;
+    }
+    
+    audioBuffers.push(audioBuffer);
   }
   
-  // Create and play audio source
+  if (audioBuffers.length === 0) {
+    throw new Error('No audio data to play');
+  }
+  
+  // Combine all buffers
+  const totalLength = audioBuffers.reduce((acc, buf) => acc + buf.length, 0);
+  const sampleRate = audioBuffers[0].sampleRate;
+  const combinedBuffer = ctx.createBuffer(1, totalLength, sampleRate);
+  const combinedData = combinedBuffer.getChannelData(0);
+  
+  let offset = 0;
+  for (const buffer of audioBuffers) {
+    combinedData.set(buffer.getChannelData(0), offset);
+    offset += buffer.length;
+  }
+  
+  // Play the audio
   const source = ctx.createBufferSource();
-  source.buffer = audioBuffer;
+  source.buffer = combinedBuffer;
   source.connect(ctx.destination);
   
-  // Return promise that resolves when audio ends
   return new Promise<void>((resolve) => {
     source.onended = () => resolve();
     source.start(0);
   });
 }
+
 ```
 
-### Simple Audio Playback Implementation
+### Complete Working Example
 
-If you need a simpler version without error handling:
+Here's a full component that demonstrates prefetching with both audio playback and visual animation:
 
 ```tsx
-// Minimal implementation for quick testing
-async function playAudioFromPrefetchedData(prefetchedData: any) {
-  const audioContext = new AudioContext();
+import { useState } from 'react';
+import { 
+  useMascotSpeech, 
+  useMascotPlayback, 
+  MascotClient, 
+  MascotRive 
+} from '@mascotbot-sdk/react';
+
+// Type definition for prefetched data
+interface PrefetchedData {
+  audioData: {
+    audioEvents: Map<number, { data: string; sample_rate: number }>;
+    visemesBySequence: Map<number, any[]>;
+  };
+  duration: number;
+}
+
+// Audio playback implementation (from above)
+async function playAudioFromPrefetchedData(
+  prefetchedData: PrefetchedData,
+  audioContext?: AudioContext
+) {
+  const ctx = audioContext || new AudioContext();
   
-  // Get first audio event (simplified - production code should handle all events)
-  const firstAudioEvent = prefetchedData.audioData.audioEvents.get(0);
-  if (!firstAudioEvent) return;
-  
-  // Decode base64 to ArrayBuffer
-  const binaryString = atob(firstAudioEvent.data);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
+  if (ctx.state === 'suspended') {
+    await ctx.resume();
   }
   
-  // Convert to Float32 audio data
-  const audioBuffer = audioContext.createBuffer(
-    1, // mono
-    bytes.length / 2, // 16-bit PCM
-    firstAudioEvent.sample_rate
-  );
+  const audioBuffers: AudioBuffer[] = [];
   
-  const channelData = audioBuffer.getChannelData(0);
-  for (let i = 0; i < bytes.length / 2; i++) {
-    const int16 = (bytes[i * 2 + 1] << 8) | bytes[i * 2];
-    channelData[i] = int16 / 32768.0;
+  for (const [sequence, audioEvent] of prefetchedData.audioData.audioEvents) {
+    if (!audioEvent.data) continue;
+    
+    const binaryString = atob(audioEvent.data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    const int16Array = new Int16Array(bytes.length / 2);
+    for (let i = 0; i < int16Array.length; i++) {
+      const low = bytes[i * 2];
+      const high = bytes[i * 2 + 1];
+      int16Array[i] = (high << 8) | low;
+    }
+    
+    const sampleRate = audioEvent.sample_rate || 44100;
+    const audioBuffer = ctx.createBuffer(1, int16Array.length, sampleRate);
+    const channelData = audioBuffer.getChannelData(0);
+    
+    for (let i = 0; i < int16Array.length; i++) {
+      channelData[i] = int16Array[i] / 32768.0;
+    }
+    
+    audioBuffers.push(audioBuffer);
   }
   
-  // Play the audio
-  const source = audioContext.createBufferSource();
-  source.buffer = audioBuffer;
-  source.connect(audioContext.destination);
-  source.start();
+  if (audioBuffers.length === 0) {
+    throw new Error('No audio data to play');
+  }
   
-  // Wait for playback to complete
-  return new Promise(resolve => {
-    source.onended = resolve;
+  const totalLength = audioBuffers.reduce((acc, buf) => acc + buf.length, 0);
+  const sampleRate = audioBuffers[0].sampleRate;
+  const combinedBuffer = ctx.createBuffer(1, totalLength, sampleRate);
+  const combinedData = combinedBuffer.getChannelData(0);
+  
+  let offset = 0;
+  for (const buffer of audioBuffers) {
+    combinedData.set(buffer.getChannelData(0), offset);
+    offset += buffer.length;
+  }
+  
+  const source = ctx.createBufferSource();
+  source.buffer = combinedBuffer;
+  source.connect(ctx.destination);
+  
+  return new Promise<void>((resolve) => {
+    source.onended = () => resolve();
+    source.start(0);
   });
 }
-```
 
-### Advanced Export with Progress Tracking
-
-```tsx
-function ExportDialog({ scenes }: { scenes: Scene[] }) {
-  const [progress, setProgress] = useState(0);
-  const [status, setStatus] = useState<'idle' | 'prefetching' | 'rendering'>('idle');
-
+// Complete prefetching component
+function PrefetchingMascot() {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [status, setStatus] = useState('Ready');
+  
   const speech = useMascotSpeech({
+    apiEndpoint: "/api/visemes-audio", // Your proxy endpoint (NOT the direct Mascot Bot API)
     disableAutomaticSpeakingState: true
   });
 
-  const handleExport = async () => {
-    setStatus('prefetching');
-    
-    // Track prefetch progress
-    let completed = 0;
-    const total = scenes.filter(s => s.voiceover?.text).length;
-    
-    const prefetchPromises = scenes.map(async (scene, index) => {
-      if (scene.voiceover?.text) {
-        const data = await speech.prefetchAudio(scene.voiceover.text);
-        completed++;
-        setProgress((completed / total) * 50); // First 50% for prefetching
-        return { scene, data };
-      }
-      return null;
-    });
+  const playback = useMascotPlayback({
+    manualSpeakingStateControl: true
+  });
 
-    const prefetchedScenes = await Promise.all(prefetchPromises);
-    
-    setStatus('rendering');
-    
-    // Render with progress tracking
-    for (let i = 0; i < prefetchedScenes.length; i++) {
-      const item = prefetchedScenes[i];
-      if (item) {
-        await renderScene(item.scene, item.data);
-        setProgress(50 + ((i + 1) / prefetchedScenes.length) * 50);
-      }
+  const playPrefetchedSpeech = async (text: string) => {
+    try {
+      setIsPlaying(true);
+      setStatus('Prefetching...');
+      
+      // 1. Prefetch audio and viseme data
+      const prefetched = await speech.prefetchAudio(text);
+      
+      setStatus('Playing...');
+      
+      // 2. Start visual animation (lip sync)
+      playback.loadPrefetchedData(prefetched.audioData.visemesBySequence);
+      playback.setSpeakingStateManually(true);
+      playback.play();
+      
+      // 3. Play audio
+      await playAudioFromPrefetchedData(prefetched);
+      
+      // 4. Stop animation
+      playback.setSpeakingStateManually(false);
+      playback.reset();
+      
+      setStatus('Ready');
+    } catch (error) {
+      console.error('Playback error:', error);
+      setStatus('Error');
+    } finally {
+      setIsPlaying(false);
     }
-    
-    setStatus('idle');
   };
 
   return (
-    <div>
-      <button onClick={handleExport} disabled={status !== 'idle'}>
-        Export Video
-      </button>
-      {status !== 'idle' && (
-        <div>
-          <p>Status: {status}</p>
-          <progress value={progress} max={100} />
-        </div>
-      )}
+    <div style={{ textAlign: 'center', padding: '20px' }}>
+      <div style={{ width: 400, height: 400, margin: '0 auto' }}>
+        <MascotClient 
+          src="/mascot.riv"
+          artboard="Character"
+          inputs={["is_speaking"]}
+        >
+          <MascotRive />
+        </MascotClient>
+      </div>
+      
+      <div style={{ marginTop: '20px' }}>
+        <p>Status: {status}</p>
+        
+        <button 
+          onClick={() => playPrefetchedSpeech("Hello! I am speaking with prefetched audio.")}
+          disabled={isPlaying}
+          style={{ margin: '5px' }}
+        >
+          Play Short Message
+        </button>
+        
+        <button 
+          onClick={() => playPrefetchedSpeech("This is a longer message to demonstrate how prefetching works with extended speech. The audio and viseme data are loaded before playback begins.")}
+          disabled={isPlaying}
+          style={{ margin: '5px' }}
+        >
+          Play Long Message
+        </button>
+      </div>
     </div>
   );
 }
 ```
 
+
 ## Best Practices
 
-### 1. Always Disable Automatic State Management
+### 1. Secure Your API Keys
+
+<Warning>
+**Never expose your API keys in client-side code!** Always use a proxy endpoint to call the Mascot Bot API.
+
+❌ **Wrong**: Calling the API directly from the client
+```tsx
+// NEVER DO THIS - Exposes your API key!
+const speech = useMascotSpeech({
+  apiEndpoint: "https://api.mascot.bot/v1/visemes-audio",
+  apiKey: "your-api-key" // This would be visible to anyone!
+});
+```
+
+✅ **Correct**: Using a proxy endpoint
+```tsx
+// Safe - API key is stored securely on your server
+const speech = useMascotSpeech({
+  apiEndpoint: "/api/visemes-audio" // Your proxy endpoint
+});
+```
+</Warning>
+
+### 2. Always Disable Automatic State Management
 
 When using prefetching, always disable automatic speaking state detection:
 
@@ -587,7 +989,7 @@ const speech = useMascotSpeech({
 const speech = useMascotSpeech({});
 ```
 
-### 2. Reuse AudioContext
+### 3. Reuse AudioContext
 
 Create a single AudioContext and reuse it across all prefetched audio playback:
 
@@ -606,7 +1008,7 @@ for (const data of prefetchedItems) {
 }
 ```
 
-### 3. Handle Errors Gracefully
+### 4. Handle Errors Gracefully
 
 Always implement error handling for prefetch operations:
 
@@ -623,17 +1025,26 @@ const prefetchWithRetry = async (text: string, maxRetries = 3) => {
 };
 ```
 
-### 4. Clean Up Resources
+<Note>
+**Error Resilience**: When prefetching multiple items, the SDK continues processing other items even if one fails. This ensures partial success rather than complete failure. Always check individual results when batch processing.
+</Note>
+
+### 5. Clean Up Resources
 
 Always reset playback state after use:
 
 ```tsx
 try {
-  playback.loadPrefetchedData(data.visemesBySequence);
+  // Ensure audio context is ready
+  if (audioContext.state === 'suspended') {
+    await audioContext.resume();
+  }
+  
+  playback.loadPrefetchedData(data.audioData.visemesBySequence);
   playback.setSpeakingStateManually(true);
   playback.play();
   
-  await playAudioFromPrefetchedData(data);
+  await playAudioFromPrefetchedData(data, audioContext);
 } finally {
   // Always clean up
   playback.setSpeakingStateManually(false);
@@ -690,6 +1101,30 @@ if (activeContexts < MAX_CONTEXTS) {
     }
   });
 }
+```
+
+### Progress Tracking
+
+For large prefetch operations, implement progress tracking:
+
+```tsx
+const prefetchWithProgress = async (
+  items: Array<{ text: string; voice: string }>,
+  onProgress?: (current: number, total: number) => void
+) => {
+  const results = [];
+  
+  // Prefetch in parallel for better performance
+  const promises = items.map(async (item, index) => {
+    const data = await speech.prefetchAudio(item.text, {
+      ttsParams: { voice: item.voice }
+    });
+    onProgress?.(index + 1, items.length);
+    return data;
+  });
+  
+  return Promise.all(promises);
+};
 ```
 
 ## Troubleshooting
