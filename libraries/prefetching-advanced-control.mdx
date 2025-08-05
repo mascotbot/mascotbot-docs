@@ -63,6 +63,11 @@ const speech = useMascotSpeech({
   disableAutomaticSpeakingState: true
 });
 
+// Get playback object from hook
+const playback = useMascotPlayback({
+  manualSpeakingStateControl: true
+});
+
 // Control speaking state manually
 playback.setSpeakingStateManually(true);
 ```
@@ -143,7 +148,7 @@ function PrefetchExample() {
     // 1. Prefetch audio data
     const prefetchedData = await speech.prefetchAudio("Hello world", {
       ttsParams: {
-        voice: "en-US-1",
+        voice: "am_fenrir", // or use MascotVoices.AmericanMaleFenrir
         speed: 1.0
       }
     });
@@ -215,7 +220,7 @@ const prefetchedData = await speech.prefetchAudio(
   options?: {
     ttsParams?: {
       tts_engine?: string;      // 'mascotbot' (default), 'elevenlabs', 'cartesia'
-      voice?: string;           // Voice ID specific to the chosen engine
+      voice?: string;           // Voice ID (e.g., "am_fenrir", "af_bella") - see MascotVoices constant in SDK
       speed?: number;           // Playback speed (e.g., 1.0 for normal)
       tts_api_key?: string;     // API key for external TTS providers
     }
@@ -385,8 +390,8 @@ function VideoExporter() {
   
   return (
     <button onClick={() => exportVideo([
-      { text: "Hello world", voice: "en-US-1" },
-      { text: "Welcome to our app", voice: "en-US-2" }
+      { text: "Hello world", voice: "am_fenrir" },
+      { text: "Welcome to our app", voice: "af_bella" }
     ])}>
       Export Video
     </button>
@@ -610,7 +615,7 @@ async function playAudioFromPrefetchedData(
 }
 
 // Define voices outside component to avoid recreating on each render
-const AVAILABLE_VOICES = ['en-US-1', 'en-US-2', 'en-UK-1'];
+const AVAILABLE_VOICES = ['am_fenrir', 'af_bella', 'bm_george']; // American male, American female, British male
 
 function VoiceComparison({ text }: { text: string }) {
   const [voiceData, setVoiceData] = useState<Map<string, PrefetchedData>>();
@@ -869,7 +874,7 @@ async function playAudioFromPrefetchedData(
 }
 
 // Complete prefetching component
-function PrefetchingMascot() {
+export function PrefetchingMascot() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [status, setStatus] = useState('Ready');
   
