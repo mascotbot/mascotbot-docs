@@ -13,19 +13,6 @@ For most use cases, we recommend using our `/v1/visemes-audio` endpoint which ha
 
 In this guide, we'll explore how developers can use our lipsync endpoint to connect any Text-to-Speech (TTS) service and animate a mascot using our lipsync/visemes API. This involves setting up a server route to orchestrate the TTS and lipsync API and then playing it on the front end.
 
-## Elevenlabs Voice Over Integration
-
-This demo shows how to use the lipsync API with Elevenlabs' TTS service to animate a mascot. The integration synchronizes audio and viseme data, bringing the mascot to life with any text input. Below is an interactive example of this integration so you could try it in action.
-
-<iframe
-  src="https://mascotbot-examples.vercel.app/voice-over"
-  width="100%"
-  height="700"
-  style={{ border: "none", borderRadius: "8px", overflow: "auto", touchAction: "pan-y" }}
-  title="Mascotbot Voice Over Example"
-  allow="autoplay; encrypted-media; microphone; clipboard-write"
-></iframe>
-
 <Note>This example server route waits for the full completion of both audio and lipsync, as it is a basic example. For faster text-to-playback, you can implement playback on a client as soon as the API returns the first viseme/lipsync and audio data chunks</Note>
 
 ## How this demo works
