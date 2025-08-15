@@ -87,6 +87,7 @@ Here's how to **add avatar to ElevenLabs** in just a few lines:
 
 ```tsx
 // Initialize ElevenLabs conversational AI with avatar
+import { useState } from 'react';
 import { useConversation } from '@elevenlabs/react';
 import { 
   useMascotElevenlabs, 
@@ -263,6 +264,17 @@ import {
 export function ElevenLabsAvatar() {
   const [isConnecting, setIsConnecting] = useState(false);
   
+  // Natural lip sync config (use state to prevent re-renders)
+  const [lipSyncConfig] = useState({
+    minVisemeInterval: 40,
+    mergeWindow: 60,
+    keyVisemePreference: 0.6,
+    preserveSilence: true,
+    similarityThreshold: 0.4,
+    preserveCriticalVisemes: true,
+    criticalVisemeMinDuration: 80,
+  });
+  
   // Standard ElevenLabs conversation setup
   const conversation = useConversation({
     onConnect: () => {
@@ -284,11 +296,7 @@ export function ElevenLabsAvatar() {
     debug: true,      // See WebSocket avatar data flow
     gesture: true,    // Animated reactions on responses
     naturalLipSync: true,  // Human-like mouth movements
-    naturalLipSyncConfig: {
-      minVisemeInterval: 50,
-      mergeWindow: 60,
-      keyVisemePreference: 0.6,
-    }
+    naturalLipSyncConfig: lipSyncConfig
   });
 
   // Get signed URL for connection
@@ -376,16 +384,19 @@ Start with the "conversation" preset for most use cases. Adjust parameters based
 </Tip>
 
 ```tsx
+import { useState } from 'react';
+
 // Different presets for various use cases
 const lipSyncPresets = {
   // Natural conversation - best for most voice AI
   conversation: {
-    minVisemeInterval: 60,
-    mergeWindow: 80,
-    keyVisemePreference: 0.7,
+    minVisemeInterval: 40,
+    mergeWindow: 60,
+    keyVisemePreference: 0.6,
     preserveSilence: true,
-    similarityThreshold: 0.6,
+    similarityThreshold: 0.4,
     preserveCriticalVisemes: true,
+    criticalVisemeMinDuration: 80,
   },
   
   // Fast speech - for excited or rapid voice
@@ -409,11 +420,14 @@ const lipSyncPresets = {
   }
 };
 
+// Inside your component - use state for stable references
+const [lipSyncConfig] = useState(lipSyncPresets.conversation);
+
 // Apply preset to your conversational AI avatar
 useMascotElevenlabs({
   conversation,
   naturalLipSync: true,
-  naturalLipSyncConfig: lipSyncPresets.conversation
+  naturalLipSyncConfig: lipSyncConfig
 });
 ```
 
@@ -492,6 +506,7 @@ interface UseMascotElevenlabsOptions {
     preserveSilence?: boolean;           // Keep silence visemes
     similarityThreshold?: number;        // Threshold for merging (0-1)
     preserveCriticalVisemes?: boolean;   // Never skip important shapes
+    criticalVisemeMinDuration?: number;  // Min duration for critical visemes (ms)
   };
 }
 ```
@@ -561,6 +576,39 @@ Ensure `useMascotElevenlabs` is called after `useConversation` and check browser
 <Tip>
 Use `debug: true` to see message flow, check network latency, and adjust natural lip sync parameters for better synchronization.
 </Tip>
+
+### Only First Second of Speech Animated?
+
+This typically happens when the `naturalLipSyncConfig` object is created inline, causing React to reinitialize the hook on every render. To fix this:
+
+```tsx
+// ❌ Don't do this - creates new object on every render
+useMascotElevenlabs({
+  conversation,
+  naturalLipSyncConfig: {
+    minVisemeInterval: 50,
+    mergeWindow: 60,
+  }
+});
+
+// ✅ Do this - stable reference across renders
+const [lipSyncConfig] = useState({
+  minVisemeInterval: 40,
+  mergeWindow: 60,
+  keyVisemePreference: 0.6,
+  preserveSilence: true,
+  similarityThreshold: 0.4,
+  preserveCriticalVisemes: true,
+  criticalVisemeMinDuration: 80,
+});
+
+useMascotElevenlabs({
+  conversation,
+  naturalLipSyncConfig: lipSyncConfig
+});
+```
+
+The stable reference prevents the WebSocket interception from reinitializing after the first audio chunk.
 
 ## FAQ
 
