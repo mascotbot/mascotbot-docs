@@ -28,18 +28,24 @@ Transform your ElevenLabs voice agents into engaging visual experiences with Mas
   src="https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/elevenlabs_demo.mp4"
 ></video>
 
-<Columns cols={2}>
+<Columns cols={3}>
   <Card title="Quick Start" icon="rocket" href="#quick-start">
     Add avatars in 5 minutes
   </Card>
   <Card title="Live Demo" icon="play" href="https://mascotbot-seven.vercel.app/elevenlabs-demo">
     See voice avatars in action
   </Card>
+  <Card title="GitHub Repo" icon="github" href="https://github.com/mascotbot/elevenlabs-avatar">
+    Complete example code
+  </Card>
   <Card title="Features" icon="sparkles" href="#features">
     Real-time lip sync & more
   </Card>
   <Card title="API Reference" icon="code" href="#api-reference">
     Complete hook documentation
+  </Card>
+  <Card title="Deploy" icon="triangle" iconType="solid" href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmascotbot%2Felevenlabs-avatar">
+    One-click deployment
   </Card>
 </Columns>
 
@@ -80,6 +86,10 @@ pnpm add ./mascotbot-sdk-react-0.1.6.tgz @elevenlabs/react
 <Note>
 You'll receive the SDK .tgz file after subscribing to one of our plans. The SDK works alongside the official ElevenLabs React SDK without any modifications. Both packages are required for the integration.
 </Note>
+
+<Info>
+**Want to see a complete working example?** Check out our [open-source demo repository](https://github.com/mascotbot/elevenlabs-avatar) with full implementation, or deploy it directly to Vercel with one click.
+</Info>
 
 ### Basic Integration
 
@@ -640,9 +650,12 @@ We offer both exact viseme matching and natural lip sync processing for human-li
 
 Ready to transform your voice AI? Our **open source avatar for ElevenLabs** makes it simple:
 
-<Columns cols={1}>
+<Columns cols={2}>
   <Card title="Try Voice Avatar Demo" icon="play" href="https://mascotbot-seven.vercel.app/elevenlabs-demo">
     Experience it yourself
+  </Card>
+  <Card title="Demo Repository" icon="github" href="https://github.com/mascotbot/elevenlabs-avatar">
+    Complete working example
   </Card>
 </Columns>
 
