@@ -581,12 +581,6 @@ Our **streaming avatar data** system:
 Ensure `useMascotElevenlabs` is called after `useConversation` and check browser console for WebSocket errors. Verify Rive file has correct input names.
 </Warning>
 
-### Lip Sync Out of Sync?
-
-<Tip>
-Use `debug: true` to see message flow, check network latency, and adjust natural lip sync parameters for better synchronization.
-</Tip>
-
 ### Only First Second of Speech Animated?
 
 This typically happens when the `naturalLipSyncConfig` object is created inline, causing React to reinitialize the hook on every render. To fix this:
