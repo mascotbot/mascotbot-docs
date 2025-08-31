@@ -143,10 +143,13 @@ The Mascot Bot proxy endpoint handles the ElevenLabs authentication and adds rea
 
 ```typescript
 // app/api/get-signed-url/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET() {
+export async function POST(request: NextRequest) {
   try {
+    const body = await request.json();
+    const { dynamicVariables } = body;
+
     // Use Mascot Bot proxy endpoint for automatic viseme injection
     const response = await fetch(
       'https://api.mascot.bot/v1/get-signed-url',
@@ -162,6 +165,8 @@ export async function GET() {
             provider_config: {
               agent_id: process.env.ELEVENLABS_AGENT_ID,
               api_key: process.env.ELEVENLABS_API_KEY,
+              // Optional: pass dynamic variables if provided
+              ...(dynamicVariables && { dynamic_variables: dynamicVariables }),
             },
           },
         }),
@@ -311,7 +316,11 @@ export function ElevenLabsAvatar() {
 
   // Get signed URL for connection
   const getSignedUrl = async () => {
-    const response = await fetch('/api/get-signed-url');
+    const response = await fetch('/api/get-signed-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dynamicVariables: {} })
+    });
     const data = await response.json();
     return data.signedUrl;
   };
@@ -485,6 +494,184 @@ export function AvatarWidget() {
 }
 ```
 
+### Step 4: Using Dynamic Variables
+
+ElevenLabs supports **dynamic variables** that allow you to personalize conversations with runtime values. Mascot Bot SDK fully supports this feature through the proxy endpoint.
+
+<Note>
+Dynamic variables work independently from the Mascot Bot SDK - they are passed directly to ElevenLabs through our proxy. This means you can use all ElevenLabs dynamic variable features without any conflicts.
+</Note>
+
+#### Implementation
+
+Update your API route to accept dynamic variables:
+
+```typescript
+// app/api/get-signed-url/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { dynamicVariables } = body;
+
+    const response = await fetch(
+      'https://api.mascot.bot/v1/get-signed-url',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.MASCOT_BOT_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          config: {
+            provider: 'elevenlabs',
+            provider_config: {
+              agent_id: process.env.ELEVENLABS_AGENT_ID,
+              api_key: process.env.ELEVENLABS_API_KEY,
+              // Pass dynamic variables to ElevenLabs
+              ...(dynamicVariables && { dynamic_variables: dynamicVariables }),
+            },
+          },
+        }),
+        cache: 'no-store',
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to get signed URL');
+    }
+
+    const data = await response.json();
+    return NextResponse.json({ signedUrl: data.signed_url });
+  } catch (error) {
+    console.error('Error:', error);
+    return NextResponse.json(
+      { error: 'Failed to generate signed URL' },
+      { status: 500 }
+    );
+  }
+}
+```
+
+#### Using Dynamic Variables in Your Component
+
+Pass dynamic variables when starting a conversation:
+
+```tsx
+export function ElevenLabsAvatar() {
+  const conversation = useConversation({
+    onConnect: () => console.log('Connected'),
+  });
+
+  useMascotElevenlabs({ conversation });
+
+  // Define your dynamic variables
+  const dynamicVariables = {
+    name: "John",
+    role: "developer",
+    company: "Acme Corp",
+    // Add any variables your agent uses
+  };
+
+  const getSignedUrl = async () => {
+    const response = await fetch('/api/get-signed-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dynamicVariables }),
+    });
+    const data = await response.json();
+    return data.signedUrl;
+  };
+
+  const startConversation = async () => {
+    const signedUrl = await getSignedUrl();
+    
+    // Pass dynamic variables to the conversation
+    await conversation.startSession({ 
+      signedUrl,
+      dynamicVariables 
+    });
+  };
+
+  return (
+    // Your component JSX
+  );
+}
+```
+
+#### Complete Example with Dynamic Variables
+
+Here's a full implementation showing personalized greetings:
+
+```tsx
+interface AvatarProps {
+  userName?: string;
+  userRole?: string;
+}
+
+export function PersonalizedAvatar({ userName, userRole }: AvatarProps) {
+  const [isConnecting, setIsConnecting] = useState(false);
+  
+  const conversation = useConversation({
+    onConnect: () => setIsConnecting(false),
+  });
+
+  useMascotElevenlabs({ 
+    conversation,
+    gesture: true 
+  });
+
+  // Dynamic variables for personalization
+  const dynamicVariables = {
+    name: userName || "Guest",
+    role: userRole || "user",
+    time_of_day: new Date().getHours() < 12 ? "morning" : "afternoon",
+  };
+
+  const startPersonalizedConversation = async () => {
+    setIsConnecting(true);
+    
+    // Get signed URL with dynamic variables
+    const response = await fetch('/api/get-signed-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dynamicVariables }),
+    });
+    
+    const { signedUrl } = await response.json();
+    
+    await conversation.startSession({ 
+      signedUrl,
+      dynamicVariables 
+    });
+  };
+
+  return (
+    <div>
+      <MascotClient src="/mascot.riv" artboard="Character">
+        <MascotRive />
+      </MascotClient>
+      
+      <button onClick={startPersonalizedConversation}>
+        Start Personalized Chat
+      </button>
+    </div>
+  );
+}
+```
+
+<Info>
+Configure your ElevenLabs agent to use these variables in prompts like: "Good `{{time_of_day}}`, `{{name}}`! As a `{{role}}`, how can I help you today?"
+</Info>
+
+#### Important Notes
+
+- **No SDK Conflicts**: Dynamic variables are handled entirely by ElevenLabs - Mascot Bot SDK simply passes them through
+- **Type Support**: Variables can be strings, numbers, or booleans
+- **Agent Configuration**: Remember to configure your ElevenLabs agent to use the dynamic variables
+- **Testing**: Use hardcoded values during development, then switch to dynamic values in production
+
 ## API Reference
 
 ### Mascot Bot Proxy API
@@ -613,6 +800,34 @@ useMascotElevenlabs({
 ```
 
 The stable reference prevents the WebSocket interception from reinitializing after the first audio chunk.
+
+### Dynamic Variables Not Working?
+
+If your ElevenLabs agent isn't using the dynamic variables:
+
+<Warning>
+1. Ensure your agent configuration includes the variable placeholders (e.g., `{{name}}`)
+2. Check that variables are passed both to the proxy endpoint AND to `startSession()`
+3. Verify the variable names match exactly (case-sensitive)
+4. Check browser console for any errors in the API route
+</Warning>
+
+```tsx
+// Correct implementation
+const dynamicVariables = { name: "John", role: "admin" };
+
+// 1. Pass to proxy endpoint
+const response = await fetch('/api/get-signed-url', {
+  method: 'POST',
+  body: JSON.stringify({ dynamicVariables })
+});
+
+// 2. Pass to conversation
+await conversation.startSession({ 
+  signedUrl,
+  dynamicVariables  // Don't forget this!
+});
+```
 
 ## FAQ
 
