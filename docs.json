@@ -38,7 +38,6 @@
                 "pages": [
                   "libraries/react-sdk",
                   "libraries/elevenlabs-avatar",
-                  "libraries/mascot-call",
                   "libraries/natural-lip-sync",
                   "libraries/prefetching-advanced-control",
                   "libraries/react-troubleshooting"
@@ -78,7 +77,8 @@
             "pages": [
               "api-reference/endpoint/post",
               "api-reference/endpoint/visemes-audio",
-              "api-reference/endpoint/get-signed-url"
+              "api-reference/endpoint/get-signed-url",
+              "api-reference/endpoint/gemini-live-api"
             ]
           },
           {
@@ -126,6 +126,7 @@
   "api": {
     "openapi": "api-reference/openapi.yaml"
   },
+  "asyncapi": "api-reference/asyncapi.yaml",
   "seo": {
     "indexing": "all",
     "metatags": {
