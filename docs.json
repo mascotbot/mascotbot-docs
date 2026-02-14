@@ -38,6 +38,7 @@
                 "pages": [
                   "libraries/react-sdk",
                   "libraries/elevenlabs-avatar",
+                  "libraries/gemini-live-api-avatar",
                   "libraries/natural-lip-sync",
                   "libraries/prefetching-advanced-control",
                   "libraries/react-troubleshooting"
@@ -77,8 +78,7 @@
             "pages": [
               "api-reference/endpoint/post",
               "api-reference/endpoint/visemes-audio",
-              "api-reference/endpoint/get-signed-url",
-              "api-reference/endpoint/gemini-live-api"
+              "api-reference/endpoint/get-signed-url"
             ]
           },
           {

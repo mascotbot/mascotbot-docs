@@ -1,0 +1,1152 @@
+---
+title: Gemini Live API Avatar Integration - Build Interactive AI Avatars with Lip Sync
+sidebarTitle: Gemini Live API Avatar
+description: Complete guide to building interactive AI avatars with Gemini Live API and Mascot Bot SDK. Real-time lip sync, ephemeral tokens, WebSocket streaming, and production-ready React components. TypeScript/JavaScript tutorial →
+'og:title': 'Gemini Live API Avatar Integration - Interactive AI Avatar with Lip Sync | Mascot Bot SDK'
+'og:description': 'Build interactive AI avatars powered by Gemini Live API. Real-time lip sync, webcam video streaming, ephemeral token security, WebSocket streaming avatars. React/TypeScript SDK with full Google AI SDK compatibility.'
+'og:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_images/og_gemini_liveapi.jpg'
+'og:url': 'https://docs.mascot.bot/libraries/gemini-live-api-avatar'
+'twitter:title': 'Build Interactive AI Avatars with Gemini Live API'
+'twitter:description': 'Real-time lip sync avatars for Gemini Live API with webcam video streaming. Works alongside Google AI SDK. Ephemeral token support, WebSocket streaming, React components.'
+'twitter:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_images/og_gemini_liveapi.jpg'
+'article:published_time': '2026-02-06T00:00:00+00:00'
+'article:author': 'Mascot Bot Team'
+'article:section': 'SDK Documentation'
+'article:tag': 'Gemini Live API, avatar, lip sync, React, interactive AI avatar, Google AI SDK, WebSocket, TypeScript'
+---
+
+# Gemini Live API Avatar — Build an Interactive AI Avatar with Real-time Lip Sync
+
+Add a **lip-synced animated avatar** to your Gemini Live API application in minutes. Mascot Bot SDK works alongside the official Google AI SDK (`@google/genai`) — your existing Gemini code stays untouched. Just swap the base URL and you get automatic viseme injection, real-time lip sync, and production-ready React components.
+
+<img src="https://mascotbot-app.s3.amazonaws.com/rive-assets/og_images/og_gemini_liveapi.jpg" alt="Gemini Live API Avatar with webcam video — interactive AI mascot with real-time lip sync" className="w-full rounded-xl" />
+
+<Columns cols={3}>
+  <Card title="Quick Start" icon="rocket" href="#quick-start">
+    Add avatars in 5 minutes
+  </Card>
+  <Card title="Live Demo" icon="play" href="https://mascotbot-seven.vercel.app/dragon-liveapi">
+    See Gemini Live avatar in action
+  </Card>
+  <Card title="GitHub Repo" icon="github" href="https://github.com/mascotbot-templates/gemini-live-api-avatar">
+    Complete example code
+  </Card>
+  <Card title="Features" icon="sparkles" href="#features">
+    Real-time lip sync & more
+  </Card>
+  <Card title="API Reference" icon="code" href="#api-reference">
+    Complete hook documentation
+  </Card>
+  <Card title="Deploy" icon="triangle" iconType="solid" href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmascotbot-templates%2Fgemini-live-api-avatar">
+    One-click deployment
+  </Card>
+</Columns>
+
+## Why Add an Avatar to Your Gemini Live API App?
+
+The **Gemini Live API** delivers real-time, multimodal voice conversations over WebSocket — but voice alone can feel impersonal. By pairing it with an **interactive AI avatar** that speaks with perfectly synchronized lip movements, you transform a voice stream into an engaging visual experience.
+
+Mascot Bot SDK is designed to **complement** the Google AI SDK, not replace it. You continue to use `@google/genai` for connecting, sending audio, and handling responses exactly as you normally would. Mascot Bot simply intercepts the WebSocket stream, extracts audio timing data, and drives a Rive-powered avatar with frame-accurate lip sync — all without modifying a single line of your Google SDK code.
+
+### How It Works: The Base URL Proxy Pattern
+
+The integration is elegantly simple. Google AI SDK natively supports a `baseUrl` option in `httpOptions`. Mascot Bot uses this as the integration point:
+
+```typescript
+// Without Mascot Bot — direct to Google
+const ai = new GoogleGenAI({
+  apiKey: "your-google-api-key",
+});
+
+// With Mascot Bot — just swap the base URL
+const ai = new GoogleGenAI({
+  apiKey: mascotBotToken,          // Mascot Bot token (wraps your Google credentials)
+  httpOptions: {
+    baseUrl: "https://api.mascot.bot", // Mascot Bot proxy
+  },
+});
+
+// Everything else stays exactly the same!
+const session = await ai.live.connect({ model: "gemini-2.5-flash-preview" });
+```
+
+The Mascot Bot proxy transparently forwards all Gemini traffic while injecting viseme data into the response stream. Your Google SDK calls — `session.sendRealtimeInput()`, `session.sendClientContent()`, `session.close()` — all work identically.
+
+## Features
+
+### <Icon icon="bullseye" iconType="solid" />&nbsp; Real-time Lip Sync for Gemini Live API
+
+Frame-accurate **viseme synchronization** with Gemini audio responses. Audio and visemes arrive in a single combined WebSocket message, ensuring zero drift between voice and mouth animation.
+
+### <Icon icon="bolt" iconType="solid" />&nbsp; 120fps Avatar Animation
+
+Smooth, natural **voice-driven facial animation** powered by WebGL2 and the Rive runtime. Sub-50ms audio-to-visual latency.
+
+### <Icon icon="plug" iconType="solid" />&nbsp; Native Google AI SDK Compatibility
+
+Works alongside `@google/genai` with zero conflicts. Your existing Gemini Live API code stays untouched — Mascot Bot integrates through the SDK's native `baseUrl` option.
+
+### <Icon icon="shield-halved" iconType="solid" />&nbsp; Ephemeral Token Security
+
+Full support for Google's **ephemeral token** system. Lock system instructions, voice config, and model parameters server-side. The client never sees your API key or prompt.
+
+### <Icon icon="rotate" iconType="solid" />&nbsp; WebSocket Streaming Avatar
+
+Automatic **WebSocket streaming avatar** data extraction from Gemini connections. Handles all message types including audio, visemes, and interruptions.
+
+### <Icon icon="masks-theater" iconType="solid" />&nbsp; Natural Lip Sync Processing
+
+Advanced algorithm creates natural mouth movements by intelligently merging visemes — avoiding robotic over-articulation.
+
+### <Icon icon="video" iconType="solid" />&nbsp; Webcam Video Streaming
+
+Stream your **webcam video to Gemini** so the AI can see you while you talk. Gemini's multimodal capabilities let the avatar respond to what it sees — making conversations more natural and context-aware.
+
+### <Icon icon="clock" iconType="solid" />&nbsp; Session Management
+
+Built-in support for token refresh and reconnection. Pre-fetch tokens for instant connection, auto-refresh before expiry, and clean up on disconnect.
+
+## Quick Start
+
+### Installation
+
+```bash
+npm install @google/genai ./mascotbot-sdk-react-0.1.7.tgz
+# or
+pnpm add @google/genai ./mascotbot-sdk-react-0.1.7.tgz
+```
+
+<Note>
+You'll receive the SDK `.tgz` file after subscribing to one of our plans. The SDK works alongside the official Google AI SDK (`@google/genai`) without any modifications. Both packages are required for the integration.
+</Note>
+
+<Info>
+**Want to see a complete working example?** Check out our [open-source demo repository](https://github.com/mascotbot-templates/gemini-live-api-avatar) with full implementation, or deploy it directly to Vercel with one click.
+</Info>
+
+### Basic Integration
+
+Here's how to add a **lip-synced avatar to Gemini Live API** in just a few lines:
+
+```tsx
+import { GoogleGenAI } from '@google/genai';
+import {
+  useMascotLiveAPI,
+  MascotProvider,
+  MascotClient,
+  MascotRive,
+} from '@mascotbot-sdk/react';
+
+function GeminiAvatar() {
+  const [session, setSession] = useState<{ status: string }>({ status: 'disconnected' });
+
+  // Add visual avatar with one hook — it handles everything
+  const { isIntercepting, messageCount } = useMascotLiveAPI({
+    session,
+    gesture: true,          // Animated reactions on speech
+    naturalLipSync: true,   // Human-like mouth movements
+  });
+
+  const startConversation = async () => {
+    // 1. Get token from your backend
+    const res = await fetch('/api/get-signed-url-gemini');
+    const { baseUrl, ephemeralToken, model } = await res.json();
+
+    // 2. Connect using Google AI SDK — just swap the base URL
+    const ai = new GoogleGenAI({
+      apiKey: ephemeralToken,
+      httpOptions: { baseUrl },
+    });
+
+    const liveSession = await ai.live.connect({
+      model,
+      callbacks: {
+        onopen: () => setSession({ status: 'connected' }),
+        onclose: () => setSession({ status: 'disconnected' }),
+      },
+    });
+
+    // 3. Send initial message to trigger greeting
+    liveSession.sendClientContent({
+      turns: 'Hello',
+      turnComplete: true,
+    });
+  };
+
+  return (
+    <MascotProvider>
+      <MascotClient
+        src="/mascot.riv"
+        inputs={['is_speaking', 'gesture']}
+      >
+        <MascotRive />
+        <button onClick={startConversation}>Start Conversation</button>
+      </MascotClient>
+    </MascotProvider>
+  );
+}
+```
+
+That's it! Your **Gemini Live API avatar with lip sync** is ready. The SDK handles all real-time viseme synchronization automatically.
+
+## Complete Implementation Guide
+
+### Step 1: Set Up Ephemeral Token Generation (Server-Side)
+
+Gemini Live API supports **ephemeral tokens** that lock configuration server-side. This is the recommended approach for production — the client never sees your API key, system instructions, or voice settings.
+
+Mascot Bot fully supports this pattern. You create a Google ephemeral token, pass it to the Mascot Bot proxy, and receive a wrapped token the client can safely use.
+
+<Note>
+The Mascot Bot proxy endpoint receives your Google ephemeral token and creates a proxied connection that injects real-time viseme data into the Gemini WebSocket stream. This is required for avatar lip sync to work.
+</Note>
+
+```typescript
+// app/api/get-signed-url-gemini/route.ts
+import { NextResponse } from 'next/server';
+import { GoogleGenAI, Modality } from '@google/genai';
+
+// Configuration locked server-side — client never sees this
+const GEMINI_CONFIG = {
+  model: 'gemini-2.5-flash-preview',
+  systemInstruction: 'You are a friendly assistant. Keep responses brief and conversational.',
+  voiceName: 'Aoede',     // Google's built-in voice
+  thinkingBudget: 0,      // Disable thinking for faster responses
+  initialMessage: 'Hello',
+};
+
+export async function GET() {
+  try {
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (!geminiApiKey) {
+      return NextResponse.json(
+        { error: 'Gemini API key not configured' },
+        { status: 500 }
+      );
+    }
+
+    // 1. Create Google ephemeral token with locked config
+    const ai = new GoogleGenAI({
+      apiKey: geminiApiKey,
+      httpOptions: { apiVersion: 'v1alpha' },
+    });
+
+    const googleToken = await ai.authTokens.create({
+      config: {
+        uses: 1, // Single-use token
+        liveConnectConstraints: {
+          model: GEMINI_CONFIG.model,
+          config: {
+            responseModalities: [Modality.AUDIO],
+            systemInstruction: {
+              parts: [{ text: GEMINI_CONFIG.systemInstruction }],
+            },
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName: GEMINI_CONFIG.voiceName },
+              },
+            },
+            generationConfig: {
+              thinkingConfig: { thinkingBudget: GEMINI_CONFIG.thinkingBudget },
+            },
+          },
+        },
+        httpOptions: { apiVersion: 'v1alpha' },
+      },
+    });
+
+    // 2. Get Mascot Bot proxy token
+    const response = await fetch('https://api.mascot.bot/v1/get-signed-url', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.MASCOT_BOT_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        config: {
+          provider: 'gemini',
+          provider_config: {
+            ephemeral_token: googleToken.name,
+            model: GEMINI_CONFIG.model,
+          },
+        },
+      }),
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to get signed URL');
+    }
+
+    const data = await response.json();
+
+    // 3. Return connection info (config is NOT exposed)
+    return NextResponse.json({
+      baseUrl: 'https://api.mascot.bot',
+      ephemeralToken: data.api_key,
+      model: GEMINI_CONFIG.model,
+      initialMessage: GEMINI_CONFIG.initialMessage,
+    });
+  } catch (error) {
+    console.error('Error:', error);
+    return NextResponse.json(
+      { error: 'Failed to generate signed URL' },
+      { status: 500 }
+    );
+  }
+}
+
+export const dynamic = 'force-dynamic';
+```
+
+<Info>
+Required environment variables:
+- `GEMINI_API_KEY`: Your Google Gemini API key (from [aistudio.google.com](https://aistudio.google.com))
+- `MASCOT_BOT_API_KEY`: Your Mascot Bot API key (from [app.mascot.bot](https://app.mascot.bot))
+</Info>
+
+#### Ephemeral Token Security Model
+
+The ephemeral token flow provides a strong security boundary:
+
+<img src="/images/mermaid-diagram-2026-02-06-123746.svg" alt="Ephemeral Token Security Model - Server creates Google ephemeral token with locked config, passes through Mascot Bot proxy, client receives only wrapped token" style={{ width: '100%', maxWidth: '720px', margin: '1rem auto', display: 'block' }} />
+
+Key security properties:
+- **`uses: 1`** — Token expires after a single connection
+- **Config locked** — System instructions and voice settings cannot be overridden by the client
+- **No API key exposure** — Your Gemini API key never reaches the browser
+- **Proxy isolation** — Mascot Bot proxy adds viseme data without exposing internal routing
+
+### Step 2: Create Your Avatar Component
+
+Build a complete **React avatar component** with conversation controls, audio input/output, and session management:
+
+```tsx
+// components/GeminiLiveAvatar.tsx
+'use client';
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { GoogleGenAI } from '@google/genai';
+import type { Session } from '@google/genai';
+import {
+  MascotProvider,
+  MascotClient,
+  MascotRive,
+  useMascotLiveAPI,
+} from '@mascotbot-sdk/react';
+import { Fit, Alignment } from '@rive-app/react-webgl2';
+
+// Session interface for tracking connection status
+interface LiveAPISession {
+  status: 'disconnected' | 'disconnecting' | 'connecting' | 'connected';
+}
+
+function GeminiLiveContent() {
+  const [sessionStatus, setSessionStatus] = useState<LiveAPISession['status']>('disconnected');
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const liveSessionRef = useRef<Session | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const processorRef = useRef<ScriptProcessorNode | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+
+  // Session object for the hook
+  const session: LiveAPISession = useMemo(
+    () => ({ status: sessionStatus }),
+    [sessionStatus]
+  );
+
+  // Natural lip sync config — use useMemo for stable reference
+  const lipSyncConfig = useMemo(() => ({
+    minVisemeInterval: 40,
+    mergeWindow: 60,
+    keyVisemePreference: 0.6,
+    preserveSilence: true,
+    similarityThreshold: 0.4,
+    preserveCriticalVisemes: true,
+  }), []);
+
+  // Enable avatar lip sync — this is the core integration hook
+  const { isIntercepting, messageCount } = useMascotLiveAPI({
+    session,
+    debug: false,
+    gesture: true,
+    naturalLipSync: true,
+    naturalLipSyncConfig: lipSyncConfig,
+  });
+
+  // Cached connection config for fast reconnection
+  const [cachedConfig, setCachedConfig] = useState<{
+    baseUrl: string;
+    ephemeralToken: string;
+    model: string;
+    initialMessage?: string;
+  } | null>(null);
+
+  // Fetch signed URL config from your backend
+  const fetchConfig = useCallback(async () => {
+    try {
+      const res = await fetch('/api/get-signed-url-gemini');
+      if (!res.ok) throw new Error('Failed to fetch config');
+      const config = await res.json();
+      setCachedConfig(config);
+      return config;
+    } catch (error) {
+      console.error('Failed to fetch config:', error);
+      setCachedConfig(null);
+      return null;
+    }
+  }, []);
+
+  // Pre-fetch token on mount + refresh every 9 minutes
+  useEffect(() => {
+    fetchConfig();
+    const interval = setInterval(fetchConfig, 9 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [fetchConfig]);
+
+  // Set up microphone audio capture
+  const setupAudioInput = (liveSession: Session, stream: MediaStream) => {
+    // Gemini expects 16kHz PCM16 audio input
+    audioContextRef.current = new AudioContext({ sampleRate: 16000 });
+    const source = audioContextRef.current.createMediaStreamSource(stream);
+    const processor = audioContextRef.current.createScriptProcessor(4096, 1, 1);
+    processorRef.current = processor;
+
+    processor.onaudioprocess = (e) => {
+      if (!liveSessionRef.current || isMuted) return;
+
+      const inputData = e.inputBuffer.getChannelData(0);
+      // Convert Float32 to PCM16
+      const pcmData = new Int16Array(inputData.length);
+      for (let i = 0; i < inputData.length; i++) {
+        const s = Math.max(-1, Math.min(1, inputData[i]));
+        pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+      }
+
+      // Base64 encode and send via Google SDK
+      const uint8Array = new Uint8Array(pcmData.buffer);
+      const base64 = btoa(String.fromCharCode(...Array.from(uint8Array)));
+
+      liveSession.sendRealtimeInput({
+        audio: { data: base64, mimeType: 'audio/pcm;rate=16000' },
+      });
+    };
+
+    source.connect(processor);
+    processor.connect(audioContextRef.current.destination);
+  };
+
+  // Clean up audio resources
+  const cleanupAudioInput = () => {
+    processorRef.current?.disconnect();
+    processorRef.current = null;
+    audioContextRef.current?.close();
+    audioContextRef.current = null;
+    mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
+    mediaStreamRef.current = null;
+  };
+
+  // Start a conversation
+  const startConversation = useCallback(async () => {
+    setIsConnecting(true);
+    setSessionStatus('connecting');
+
+    try {
+      // 1. Microphone access
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+
+      // 2. Get token (use cached or fetch fresh)
+      let config = cachedConfig;
+      if (!config) {
+        config = await fetchConfig();
+        if (!config) throw new Error('Could not get connection config');
+      }
+
+      const { baseUrl, ephemeralToken, model, initialMessage } = config;
+
+      // 3. Connect using Google AI SDK — only the base URL changes
+      const ai = new GoogleGenAI({
+        apiKey: ephemeralToken,
+        httpOptions: { baseUrl },
+      });
+
+      const liveSession = await ai.live.connect({
+        model,
+        callbacks: {
+          onopen: () => {
+            setSessionStatus('connected');
+            setIsConnecting(false);
+          },
+          onerror: (error) => {
+            console.error('Gemini error:', error);
+            setSessionStatus('disconnected');
+            setIsConnecting(false);
+            // Force fresh token for next call
+            setCachedConfig(null);
+            fetchConfig();
+          },
+          onclose: () => {
+            setSessionStatus('disconnected');
+            cleanupAudioInput();
+            // Force fresh token for next call
+            setCachedConfig(null);
+            fetchConfig();
+          },
+        },
+      });
+
+      liveSessionRef.current = liveSession;
+
+      // 4. Trigger assistant greeting
+      if (initialMessage) {
+        liveSession.sendClientContent({
+          turns: initialMessage,
+          turnComplete: true,
+        });
+      }
+
+      // 5. Start streaming microphone
+      setupAudioInput(liveSession, stream);
+    } catch (error) {
+      console.error('Failed to start conversation:', error);
+      setIsConnecting(false);
+      setSessionStatus('disconnected');
+    }
+  }, [cachedConfig, fetchConfig]);
+
+  // Stop the conversation
+  const stopConversation = useCallback(() => {
+    setSessionStatus('disconnecting');
+    liveSessionRef.current?.close();
+    liveSessionRef.current = null;
+    cleanupAudioInput();
+  }, []);
+
+  const isConnected = sessionStatus === 'connected';
+
+  return (
+    <div className="flex flex-col items-center gap-4">
+      {/* Avatar display */}
+      <div className="w-96 h-96">
+        <MascotRive />
+      </div>
+
+      {/* Controls */}
+      <div className="flex gap-2">
+        <button
+          onClick={isConnected ? stopConversation : startConversation}
+          disabled={isConnecting}
+          className="px-6 py-3 bg-blue-600 text-white rounded-lg disabled:opacity-50"
+        >
+          {isConnecting
+            ? 'Connecting...'
+            : isConnected
+              ? 'End Call'
+              : 'Start Call'}
+        </button>
+
+        {isConnected && (
+          <button
+            onClick={() => setIsMuted(!isMuted)}
+            className="px-4 py-3 bg-gray-700 text-white rounded-lg"
+          >
+            {isMuted ? 'Unmute' : 'Mute'}
+          </button>
+        )}
+      </div>
+
+      {/* Status */}
+      {isIntercepting && (
+        <p className="text-sm text-gray-500">
+          Messages received: {messageCount}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Root component with providers
+export default function GeminiLiveAvatar() {
+  return (
+    <MascotProvider>
+      <MascotClient
+        src="https://your-cdn.com/mascot.riv"
+        inputs={['is_speaking', 'gesture', 'character']}
+        layout={{ fit: Fit.Contain, alignment: Alignment.Center }}
+      >
+        <GeminiLiveContent />
+      </MascotClient>
+    </MascotProvider>
+  );
+}
+```
+
+### Step 3: Advanced Features
+
+#### Token Pre-fetching for Instant Connection
+
+Pre-fetch the ephemeral token before the user clicks "Start Call" to eliminate connection latency:
+
+<Tip>
+Pre-fetching reduces perceived connection time from ~1.5s to ~300ms. The token is cached and refreshed every 9 minutes to stay valid.
+</Tip>
+
+```tsx
+const [cachedConfig, setCachedConfig] = useState(null);
+
+const fetchConfig = useCallback(async () => {
+  const res = await fetch('/api/get-signed-url-gemini');
+  const config = await res.json();
+  setCachedConfig(config);
+}, []);
+
+useEffect(() => {
+  // Fetch immediately on page load
+  fetchConfig();
+
+  // Refresh every 9 minutes (ephemeral tokens have limited lifetimes)
+  const interval = setInterval(fetchConfig, 9 * 60 * 1000);
+  return () => clearInterval(interval);
+}, [fetchConfig]);
+
+// In startConversation:
+let config = cachedConfig ?? (await fetchConfig());
+```
+
+<Warning>
+Ephemeral tokens are single-use (`uses: 1`). After a call ends, the cached token is consumed. Always invalidate the cache on disconnect and fetch a fresh token for the next call.
+</Warning>
+
+```tsx
+// In your onclose / onerror callbacks:
+onclose: () => {
+  setSessionStatus('disconnected');
+  setCachedConfig(null);  // Invalidate consumed token
+  fetchConfig();          // Pre-fetch fresh token for next call
+},
+```
+
+#### Natural Lip Sync Configuration
+
+Create more **realistic mouth movements** by adjusting natural lip sync parameters:
+
+<Tip>
+Start with the "conversation" preset for most use cases. Adjust parameters based on your specific needs — higher `minVisemeInterval` for smoother movements, lower for more articulation.
+</Tip>
+
+```tsx
+import { useMemo } from 'react';
+
+// Different presets for various use cases
+const lipSyncPresets = {
+  // Natural conversation — best for most Gemini Live API voice AI
+  conversation: {
+    minVisemeInterval: 40,
+    mergeWindow: 60,
+    keyVisemePreference: 0.6,
+    preserveSilence: true,
+    similarityThreshold: 0.4,
+    preserveCriticalVisemes: true,
+  },
+
+  // Fast speech — for excited or rapid responses
+  fastSpeech: {
+    minVisemeInterval: 80,
+    mergeWindow: 100,
+    keyVisemePreference: 0.5,
+    preserveSilence: true,
+    similarityThreshold: 0.3,
+    preserveCriticalVisemes: true,
+  },
+
+  // Clear articulation — for educational AI tutor avatars
+  educational: {
+    minVisemeInterval: 40,
+    mergeWindow: 50,
+    keyVisemePreference: 0.9,
+    preserveSilence: true,
+    similarityThreshold: 0.8,
+    preserveCriticalVisemes: true,
+  },
+};
+
+// Inside your component — use useMemo for a stable reference
+const lipSyncConfig = useMemo(() => lipSyncPresets.conversation, []);
+
+useMascotLiveAPI({
+  session,
+  naturalLipSync: true,
+  naturalLipSyncConfig: lipSyncConfig,
+});
+```
+
+#### Microphone Mute/Unmute
+
+Control microphone input without disconnecting the session:
+
+```tsx
+const [isMuted, setIsMuted] = useState(false);
+
+// In your audio processor callback:
+processor.onaudioprocess = (e) => {
+  if (!liveSessionRef.current || isMuted) return;  // Skip when muted
+  // ... process and send audio
+};
+
+// Toggle UI
+<button onClick={() => setIsMuted(!isMuted)}>
+  {isMuted ? 'Unmute' : 'Mute'}
+</button>
+```
+
+#### Webcam Video Streaming
+
+Gemini Live API supports **multimodal input** — you can stream webcam video alongside audio so the AI can see the user during conversation. This enables visual context-aware responses like describing what it sees, reacting to gestures, or helping with visual tasks.
+
+<Info>
+Video streaming requires requesting both `audio` and `video` permissions from the browser. Gemini processes video frames at approximately 1 FPS, which is sufficient for real-time visual understanding while keeping bandwidth low.
+</Info>
+
+**1. Request camera access alongside microphone:**
+
+```tsx
+// Request both audio and video permissions
+const stream = await navigator.mediaDevices.getUserMedia({
+  audio: true,
+  video: true,
+});
+
+// Attach stream to a video element for preview
+if (videoRef.current) {
+  videoRef.current.srcObject = stream;
+}
+```
+
+**2. Capture and send video frames at 1 FPS:**
+
+```tsx
+const videoRef = useRef<HTMLVideoElement>(null);
+const canvasRef = useRef<HTMLCanvasElement>(null);
+const videoIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+// Start frame capture loop after connection
+const canvas = canvasRef.current;
+const video = videoRef.current;
+if (canvas && video) {
+  const ctx = canvas.getContext('2d');
+  videoIntervalRef.current = setInterval(() => {
+    if (!liveSessionRef.current || !ctx || !isVideoEnabled) return;
+    if (video.readyState < video.HAVE_CURRENT_DATA) return;
+
+    // Crop to 768x768 square from center of video
+    canvas.width = 768;
+    canvas.height = 768;
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    const size = Math.min(vw, vh);
+    const sx = (vw - size) / 2;
+    const sy = (vh - size) / 2;
+    ctx.drawImage(video, sx, sy, size, size, 0, 0, 768, 768);
+
+    // Convert to JPEG and send to Gemini
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+    const base64 = dataUrl.split(',')[1];
+
+    liveSessionRef.current.sendRealtimeInput({
+      video: {
+        data: base64,
+        mimeType: 'image/jpeg',
+      },
+    });
+  }, 1000); // 1 frame per second
+}
+```
+
+**3. Toggle camera on/off without disconnecting:**
+
+```tsx
+const [isVideoEnabled, setIsVideoEnabled] = useState(true);
+const isVideoEnabledRef = useRef(true);
+
+const toggleVideo = useCallback(() => {
+  setIsVideoEnabled((prev) => {
+    const next = !prev;
+    isVideoEnabledRef.current = next;
+    // Enable/disable video tracks without stopping the stream
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getVideoTracks().forEach((track) => {
+        track.enabled = next;
+      });
+    }
+    return next;
+  });
+}, []);
+```
+
+<Tip>
+Use a ref (`isVideoEnabledRef`) alongside the state to avoid stale closures in the frame capture interval. The interval callback captures the ref value on each tick, ensuring the toggle takes effect immediately.
+</Tip>
+
+**4. Add a webcam preview element:**
+
+```tsx
+{/* Webcam preview — picture-in-picture style */}
+<div className="absolute bottom-32 right-4 rounded-xl overflow-hidden shadow-lg"
+     style={{ width: 160, height: 120 }}>
+  <video
+    ref={videoRef}
+    autoPlay playsInline muted
+    className="w-full h-full object-cover"
+    style={{ transform: 'scaleX(-1)' }}  {/* Mirror for natural feel */}
+  />
+</div>
+
+{/* Offscreen canvas for frame capture */}
+<canvas ref={canvasRef} className="hidden" />
+```
+
+**5. Clean up on disconnect:**
+
+```tsx
+const cleanupMedia = () => {
+  if (videoIntervalRef.current) {
+    clearInterval(videoIntervalRef.current);
+    videoIntervalRef.current = null;
+  }
+  mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+  mediaStreamRef.current = null;
+  if (videoRef.current) {
+    videoRef.current.srcObject = null;
+  }
+};
+```
+
+<Warning>
+Video streaming increases bandwidth usage. Each frame is a 768x768 JPEG (~30-50KB) sent once per second. For audio-only use cases, request only `{ audio: true }` in `getUserMedia` to skip the camera permission prompt entirely.
+</Warning>
+
+#### Session Timeout & Reconnection
+
+Gemini Live API has a **~10-minute session limit**. After this, the WebSocket connection closes automatically. Handle this gracefully:
+
+```tsx
+onclose: (event) => {
+  console.log('Connection closed:', event.reason);
+  setSessionStatus('disconnected');
+  cleanupAudioInput();
+
+  // Invalidate used token and pre-fetch a new one
+  setCachedConfig(null);
+  fetchConfig();
+
+  // Optionally auto-reconnect or prompt user
+},
+```
+
+<Info>
+Google's `sessionResumption` feature (currently in alpha) can extend sessions beyond 10 minutes by reconnecting with a session handle. When enabled in the ephemeral token config, the client SDK receives a handle before disconnect and can use it to resume the conversation context.
+</Info>
+
+#### Audio Playback Configuration
+
+The `useMascotLiveAPI` hook handles audio playback automatically — Gemini responses are played at 24kHz through the Web Audio API. You can disable this if you want to handle audio separately:
+
+```tsx
+useMascotLiveAPI({
+  session,
+  playAudio: true,          // Default: true — plays Gemini audio responses
+  audioSampleRate: 24000,   // Default: 24000 — Gemini's native output rate
+});
+```
+
+## API Reference
+
+### Mascot Bot Proxy API
+
+The proxy endpoint that enables Gemini Live API avatar integration:
+
+- **Endpoint**: `POST https://api.mascot.bot/v1/get-signed-url`
+- **Authorization**: Bearer token with your Mascot Bot API key
+- **Provider**: `"gemini"`
+
+```json
+{
+  "config": {
+    "provider": "gemini",
+    "provider_config": {
+      "ephemeral_token": "google-ephemeral-token-here",
+      "model": "gemini-2.5-flash-preview"
+    }
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "api_key": "mascot-wrapped-token",
+  "base_url": "https://api.mascot.bot"
+}
+```
+
+Use `api_key` as the `apiKey` and `base_url` as the `httpOptions.baseUrl` when initializing `GoogleGenAI`.
+
+### useMascotLiveAPI Hook
+
+The core hook for **Gemini Live API avatar** integration:
+
+<Info>
+This hook automatically starts WebSocket interception when the session connects and handles all message processing internally. No manual setup required.
+</Info>
+
+```typescript
+interface UseMascotLiveAPIOptions {
+  /** Session object with connection status */
+  session: LiveAPISession;
+  /** Log WebSocket data flow (default: false) */
+  debug?: boolean;
+  /** Callback when visemes are received */
+  onVisemeReceived?: (visemes: Array<{ offset: number; visemeId: number }>) => void;
+  /** Trigger gesture animation at start of each utterance (default: false) */
+  gesture?: boolean;
+  /** Enable natural lip sync processing (default: false) */
+  naturalLipSync?: boolean;
+  /** Natural lip sync tuning parameters */
+  naturalLipSyncConfig?: {
+    /** Min time between visemes in ms (default: 40) */
+    minVisemeInterval?: number;
+    /** Window for merging similar visemes in ms (default: 60) */
+    mergeWindow?: number;
+    /** Preference for distinctive mouth shapes, 0–1 (default: 0.6) */
+    keyVisemePreference?: number;
+    /** Preserve silence visemes (default: true) */
+    preserveSilence?: boolean;
+    /** Threshold for merging similar visemes, 0–1 (default: 0.4) */
+    similarityThreshold?: number;
+    /** Never skip critical viseme shapes (default: true) */
+    preserveCriticalVisemes?: boolean;
+  };
+  /** Play Gemini audio responses through Web Audio API (default: true) */
+  playAudio?: boolean;
+  /** Audio sample rate for playback in Hz (default: 24000) */
+  audioSampleRate?: number;
+}
+
+interface UseMascotLiveAPIResult {
+  /** Whether WebSocket interception is active */
+  isIntercepting: boolean;
+  /** Number of audio+viseme messages received */
+  messageCount: number;
+  /** The last raw message received */
+  lastMessage: GeminiAudioVisemeMessage | null;
+  /** Pre-merged audio + viseme data from last response (for replay/debug) */
+  lastResponseData?: {
+    mergedAudioBase64: string;
+    mergedVisemes: Array<{ offset: number; visemeId: number }>;
+    totalDurationMs: number;
+    sampleRate: number;
+  };
+}
+```
+
+### LiveAPISession Interface
+
+```typescript
+interface LiveAPISession {
+  status: 'disconnected' | 'disconnecting' | 'connecting' | 'connected';
+}
+```
+
+The hook reacts to status changes — it starts WebSocket interception when `status` becomes `"connected"` and cleans up when `"disconnected"`.
+
+### MascotClient Props
+
+```typescript
+interface MascotClientProps {
+  /** URL to your Rive animation file */
+  src: string;
+  /** Artboard name in the Rive file (optional) */
+  artboard?: string;
+  /** Custom input names your Rive file exposes */
+  inputs?: string[];
+  /** Layout configuration */
+  layout?: {
+    fit: Fit;              // e.g., Fit.Contain
+    alignment: Alignment;  // e.g., Alignment.Center
+  };
+}
+```
+
+## Gemini Live API Pricing & Free Tier
+
+Gemini Live API is available through Google AI Studio with a **free tier** and paid plans:
+
+| Feature | Free Tier | Paid Tier |
+|---------|-----------|-----------|
+| Audio input | Included | Included |
+| Audio output | Included | Included |
+| Session limit | ~10 min per connection | ~10 min per connection |
+| Rate limits | Lower | Higher |
+| Models | `gemini-2.5-flash-preview` | All Live API models |
+
+Mascot Bot SDK adds avatar capabilities on top. Pricing is based on your Mascot Bot plan — check [app.mascot.bot](https://app.mascot.bot) for current plans.
+
+<Info>
+The ephemeral token approach keeps costs predictable. Each token is single-use, so you have clear visibility into per-session costs on both the Google and Mascot Bot sides.
+</Info>
+
+## Use Cases
+
+### AI Customer Service Avatar
+Create an engaging **virtual assistant with face** for support interactions:
+- Visual feedback during voice conversations
+- Emotional expressions and gestures based on context
+- Brand-customizable character appearance
+
+### Educational AI Tutor
+Build an **interactive AI tutor avatar** with clear articulation:
+- Visual cues help with comprehension
+- Natural lip sync for educational content
+- Gemini's native audio model for low-latency responses
+
+### Voice AI Virtual Receptionist
+Professional **conversational interface** for businesses:
+- Welcoming visual presence on your website
+- Natural conversation flow with real-time lip sync
+- Embeddable as a widget or full-page experience
+
+### AI Mascot for Streaming & Content
+Build a **live avatar for streaming** and content creation:
+- Animated mascot character that responds in real time
+- Powered by Gemini's native audio understanding
+- WebGL2 rendering for smooth 120fps animation
+
+## Troubleshooting
+
+### Avatar Not Moving?
+
+<Warning>
+Ensure `useMascotLiveAPI` is called inside a component wrapped by `MascotClient`. Check the browser console for WebSocket errors. Verify your Rive file has the correct input names (`is_speaking`, `gesture`).
+</Warning>
+
+### Only First Second of Speech Animated?
+
+This typically happens when `naturalLipSyncConfig` is created inline, causing React to reinitialize the hook on every render:
+
+```tsx
+// ❌ Don't do this — creates new object on every render
+useMascotLiveAPI({
+  session,
+  naturalLipSyncConfig: {
+    minVisemeInterval: 40,
+    mergeWindow: 60,
+  },
+});
+
+// ✅ Do this — stable reference across renders
+const lipSyncConfig = useMemo(() => ({
+  minVisemeInterval: 40,
+  mergeWindow: 60,
+  keyVisemePreference: 0.6,
+  preserveSilence: true,
+  similarityThreshold: 0.4,
+  preserveCriticalVisemes: true,
+}), []);
+
+useMascotLiveAPI({
+  session,
+  naturalLipSyncConfig: lipSyncConfig,
+});
+```
+
+### Connection Fails on Second Call?
+
+Ephemeral tokens are single-use. After a call ends, the cached token is consumed. Make sure you invalidate the cache and fetch a fresh token on disconnect:
+
+```tsx
+onclose: () => {
+  setCachedConfig(null);   // Clear consumed token
+  fetchConfig();           // Pre-fetch fresh token
+},
+```
+
+### No Audio Playing?
+
+The `useMascotLiveAPI` hook plays audio by default (`playAudio: true`). If you don't hear audio:
+
+1. Check that the browser's autoplay policy allows audio — user interaction (clicking "Start Call") should satisfy this
+2. Verify `playAudio` is not set to `false`
+3. Check the browser console for `AudioContext` errors
+
+### Session Disconnects After ~10 Minutes?
+
+This is expected behavior. Gemini Live API has a ~10-minute session limit. Handle this in your `onclose` callback and optionally prompt the user to reconnect.
+
+## FAQ
+
+### How Does Mascot Bot Work with Google AI SDK?
+
+Mascot Bot integrates through the Google AI SDK's native `baseUrl` option. Your code continues using `@google/genai` for everything — connecting, sending audio, handling callbacks. The only change is pointing `httpOptions.baseUrl` to `api.mascot.bot` instead of Google's default endpoint. The proxy transparently forwards all traffic to Gemini while injecting viseme data for lip sync.
+
+### Do I Need to Modify My Gemini Code?
+
+No. If you already have a working Gemini Live API application, adding Mascot Bot requires just two changes:
+1. Swap the `baseUrl` to the Mascot Bot proxy
+2. Add the `useMascotLiveAPI` hook and Mascot components for the avatar
+
+All your existing Google SDK calls work identically.
+
+### Can I Use My Own Ephemeral Token Setup?
+
+Yes. If you already generate Google ephemeral tokens, you can pass them directly to the Mascot Bot proxy. The proxy accepts any valid Google ephemeral token via the `ephemeral_token` field in `provider_config`. This gives you full control over token generation, configuration, and security policies.
+
+### What is the Gemini Live API Session Limit?
+
+Each WebSocket connection has a ~10-minute limit. After that, Google closes the connection. Your app should handle the `onclose` event, clean up resources, and allow the user to reconnect with a fresh token. Google's `sessionResumption` feature (alpha) can preserve conversation context across reconnections.
+
+### What Gemini Models Support Live API?
+
+The Live API currently supports models with native audio capabilities. Check Google's documentation for the latest supported models. The model is specified in the ephemeral token configuration on your server.
+
+### How Does Lip Sync Work with Gemini Live API?
+
+The Mascot Bot proxy analyzes Gemini's audio responses in real time and injects viseme (mouth shape) data into the WebSocket stream. Each response chunk contains both audio and timing-synchronized visemes. The `useMascotLiveAPI` hook extracts this data and drives the Rive avatar's mouth animation at 120fps.
+
+### Can I Connect Directly to Gemini Without the Proxy?
+
+Yes — for audio-only features, you can connect directly to Gemini using the Google AI SDK as normal. However, avatar lip sync will not work without the Mascot Bot proxy, since Gemini does not provide viseme data natively. The avatar's mouth will not move.
+
+### Is This an Open-Source Alternative to HeyGen Interactive Avatar?
+
+Mascot Bot SDK is a developer-focused, **interactive avatar SDK** that you integrate into your own app — unlike HeyGen's SaaS platform where you configure avatars in their dashboard. With Mascot Bot, you own the code, choose your own LLM (Gemini), and customize the character with any Rive animation. It's designed for developers who want full control.
+
+### What is Voice Activity Detection (VAD) in Gemini Live API?
+
+Gemini Live API includes built-in voice activity detection that automatically detects when the user starts and stops speaking. This enables natural turn-taking — the avatar listens while you speak and responds when you pause. Mascot Bot handles interruption events from VAD automatically, resetting the lip sync when the user interrupts the avatar.
+
+## Start Building with Gemini Live API Avatar
+
+Ready to add a **lip-synced interactive avatar** to your Gemini Live API application?
+
+<Columns cols={2}>
+  <Card title="Try the Live Demo" icon="play" href="https://mascotbot-seven.vercel.app/dragon-liveapi">
+    Experience Gemini Live avatar in action
+  </Card>
+  <Card title="Demo Repository" icon="github" href="https://github.com/mascotbot-templates/gemini-live-api-avatar">
+    Complete working example
+  </Card>
+</Columns>
+
+Unlike pre-rendered video avatars, Mascot Bot provides **real-time, interactive avatars** that respond dynamically to Gemini's voice output. Integrate in minutes using the Google AI SDK you already know — and give your users a conversational AI experience they'll remember.
+
+## Next Steps
+
+1. Get the latest SDK from [app.mascot.bot](https://app.mascot.bot) and install: `npm install @google/genai ./mascotbot-sdk-react-[version].tgz`
+2. Set up the [ephemeral token endpoint](#step-1-set-up-ephemeral-token-generation-server-side) on your backend
+3. Add the `useMascotLiveAPI` hook and `MascotClient` to your app
+4. Choose or [customize your avatar character](/libraries/react-sdk)
+5. Deploy your **Gemini Live API interactive AI avatar**
+
+Build engaging voice AI experiences with the most **developer-friendly avatar SDK** for Gemini Live API. Your users will love talking to an animated character that actually talks back.

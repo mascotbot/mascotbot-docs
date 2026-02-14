@@ -182,10 +182,14 @@ paths:
 
   /v1/get-signed-url:
     post:
-      summary: Get signed URL for ElevenLabs conversational AI proxy
+      summary: Get signed URL for conversational AI proxy
       description: |
-        Generates a signed URL for connecting to your ElevenLabs conversational AI via our proxy.
-        The signed URL is valid for a limited time. Connections made via the signed URL send requests to the ElevenLabs API and add visemes to the audio stream.
+        Generates a signed URL for connecting to conversational AI providers via our proxy.
+        The signed URL is valid for 10 minutes. Connections made via the signed URL proxy requests to your chosen provider and add visemes to the audio stream.
+
+        **Supported providers:**
+        - `elevenlabs` - ElevenLabs Conversational AI
+        - `gemini` - Google Gemini Live API
       operationId: getSignedUrl
       security:
         - BearerAuth: []
@@ -204,29 +208,39 @@ paths:
                   properties:
                     provider:
                       type: string
-                      description: Name of the TTS provider (must be "elevenlabs" at the moment)
+                      description: Name of the conversational AI provider
+                      enum: ["elevenlabs", "gemini"]
                       example: "elevenlabs"
                     provider_config:
                       type: object
-                      description: Provider-specific configuration
-                      properties:
-                        api_key:
-                          type: string
-                          description: API key for ElevenLabs TTS engine
-                          example: "sk_your_elevenlabs_api_key_here"
-                        agent_id:
-                          type: string
-                          description: Agent ID for the ElevenLabs conversational AI
-                          example: "agent_1234567890"
-                        sample_rate:
-                          type: integer
-                          description: audio sample rate
-                          example: 16000
+                      description: Provider-specific configuration (varies by provider)
+            examples:
+              elevenlabs:
+                summary: ElevenLabs Configuration
+                value:
+                  config:
+                    provider: "elevenlabs"
+                    provider_config:
+                      api_key: "sk_your_elevenlabs_api_key_here"
+                      agent_id: "agent_1234567890"
+                      sample_rate: 16000
+              gemini:
+                summary: Gemini Configuration (with ephemeral token)
+                value:
+                  config:
+                    provider: "gemini"
+                    provider_config:
+                      ephemeral_token: "google-ephemeral-token-from-authTokens-create"
+                      model: "gemini-2.5-flash-preview"
       responses:
         '200':
           description: |
-            Successful response containing the signed websocket URL for connecting to the ElevenLabs conversational AI proxy.
-            Use this URL to stream audio data and receive viseme predictions in real-time.
+            Successful response containing connection credentials for the conversational AI proxy.
+            The response format varies by provider:
+
+            **ElevenLabs:** Returns a `signed_url` — use it directly as the WebSocket URL with the ElevenLabs SDK.
+
+            **Gemini:** Returns `api_key` and `base_url` — pass them to the Google AI SDK as `apiKey` and `httpOptions.baseUrl`.
           content:
             application/json:
               schema:
@@ -234,8 +248,16 @@ paths:
                 properties:
                   signed_url:
                     type: string
-                    description: Signed WebSocket URL for uploading connecting to the ElevenLabs conversational AI proxy
-                    example: "wss://api.mascot.bot/v1/convresation?token=abc123"
+                    description: (ElevenLabs) Signed WebSocket URL with encrypted token
+                    example: "wss://api.mascot.bot/v1/conversation?token=eyJhbGciOiJIUzI1NiIs..."
+                  api_key:
+                    type: string
+                    description: (Gemini) Mascot Bot proxy token — use as `apiKey` in GoogleGenAI
+                    example: "mascot_ephemeral_abc123..."
+                  base_url:
+                    type: string
+                    description: (Gemini) Proxy base URL — use as `httpOptions.baseUrl` in GoogleGenAI
+                    example: "https://api.mascot.bot"
         '400':
           description: Invalid request parameters
           content:
@@ -245,7 +267,7 @@ paths:
                 properties:
                   error:
                     type: string
-                    example: "Invalid file name provided"
+                    example: "Invalid provider config"
         '401':
           description: Unauthorized - Invalid API key
           content:
