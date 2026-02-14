@@ -16,8 +16,6 @@ Convert text to speech while simultaneously generating viseme predictions. Suppo
 ### `/v1/get-signed-url` - Generate a URL for a conversation via ElevenLabs Conversational AI with visemes
 Get a temporary URL (expires in 10 minutes) that can be used to connect to a Websocket proxy handling connection to your ElevenLabs Conversational AI agent and enriching the websocket flow with visemes.
 
-### `/v1/conversation/gemini` - Gemini Live API Proxy with visemes
-Connect to Google's Gemini Live API through our WebSocket proxy. Audio responses are automatically enriched with synchronized viseme data for facial animation while maintaining full compatibility with the native Gemini SDK.
 
 ## Real-time Streaming
 Both endpoints use Server-Sent Events (SSE) to provide real-time streaming responses, enabling low-latency playback and immediate visual feedback.
@@ -32,7 +30,5 @@ Both endpoints use Server-Sent Events (SSE) to provide real-time streaming respo
   <Card title="ElevenLabs Conversational AI" icon="comments" href="/api-reference/endpoint/get-signed-url">
     Use your existing ElevenLabs Conversational AI Agent with visemes stream added on top.
   </Card>
-  <Card title="Gemini Live API Proxy" icon="google" href="/api-reference/endpoint/gemini-live-api">
-    Connect to Google Gemini Live API with real-time viseme generation for your avatar.
-  </Card>
+
 </CardGroup>
