@@ -13,9 +13,8 @@ Process existing audio files to generate viseme predictions for facial animation
 ### `/v1/visemes-audio` - Generate Speech and Visemes  
 Convert text to speech while simultaneously generating viseme predictions. Supports multiple TTS engines including ElevenLabs and Cartesia for high-quality voice synthesis.
 
-### `/v1/get-signed-url` - Generate a URL for a conversation via ElevenLabs Conversational AI with visemes
-Get a temporary URL (expires in 10 minutes) that can be used to connect to a Websocket proxy handling connection to your ElevenLabs Conversational AI agent and enriching the websocket flow with visemes.
-
+### `/v1/get-signed-url` - Generate a signed URL for conversational AI with visemes
+Get a temporary signed URL (expires in 10 minutes) for connecting to a conversational AI proxy. Supports ElevenLabs Conversational AI and Gemini Live API — the proxy enriches the audio stream with synchronized viseme data for avatar lip sync.
 
 ## Real-time Streaming
 Both endpoints use Server-Sent Events (SSE) to provide real-time streaming responses, enabling low-latency playback and immediate visual feedback.
@@ -30,5 +29,7 @@ Both endpoints use Server-Sent Events (SSE) to provide real-time streaming respo
   <Card title="ElevenLabs Conversational AI" icon="comments" href="/api-reference/endpoint/get-signed-url">
     Use your existing ElevenLabs Conversational AI Agent with visemes stream added on top.
   </Card>
-
+  <Card title="Gemini Live API Avatar" icon="google" href="/libraries/gemini-live-api-avatar">
+    Build interactive AI avatars with Gemini Live API and real-time lip sync.
+  </Card>
 </CardGroup>
