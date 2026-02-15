@@ -38,6 +38,8 @@ function MyComponent() {
       keyVisemePreference: 0.7,   // Preference for key shapes (0-1)
       preserveSilence: true,      // Always keep silence visemes
       similarityThreshold: 0.6,   // Threshold for merging similar visemes
+      desktopTransitionDuration: 11, // Rive transition speed on desktop
+      mobileTransitionDuration: 22,  // Rive transition speed on mobile
     }
   });
 
@@ -70,6 +72,8 @@ function MyComponent() {
       keyVisemePreference: 0.6,
       preserveSilence: true,
       similarityThreshold: 0.4,
+      desktopTransitionDuration: 11,
+      mobileTransitionDuration: 22,
     }
   });
 }
@@ -91,6 +95,8 @@ function MyComponent() {
       keyVisemePreference: 0.7,
       preserveSilence: true,
       similarityThreshold: 0.6,
+      desktopTransitionDuration: 11,
+      mobileTransitionDuration: 22,
     }
   });
 
@@ -224,6 +230,8 @@ const speech = useMascotSpeech({
     preserveSilence: true,
     similarityThreshold: 0.6,
     preserveCriticalVisemes: true,
+    desktopTransitionDuration: 11,
+    mobileTransitionDuration: 22,
   }
 });
 ```
@@ -243,6 +251,8 @@ const speech = useMascotSpeech({
     preserveSilence: true,
     similarityThreshold: 0.3, // More aggressive merging
     preserveCriticalVisemes: true,
+    desktopTransitionDuration: 11,
+    mobileTransitionDuration: 22,
   }
 });
 ```
@@ -262,6 +272,8 @@ const speech = useMascotSpeech({
     preserveSilence: true,
     similarityThreshold: 0.8, // Conservative merging
     preserveCriticalVisemes: true,
+    desktopTransitionDuration: 11,
+    mobileTransitionDuration: 22,
   }
 });
 ```
@@ -281,6 +293,8 @@ const speech = useMascotSpeech({
     preserveSilence: true,
     similarityThreshold: 0.2, // Very aggressive merging
     preserveCriticalVisemes: false, // May skip critical visemes for smoother animation
+    desktopTransitionDuration: 11,
+    mobileTransitionDuration: 22,
   }
 });
 ```
@@ -397,6 +411,8 @@ function MascotWithNaturalLipSync() {
     preserveSilence: true,
     similarityThreshold: 0.6,
     preserveCriticalVisemes: true,
+    desktopTransitionDuration: 11,
+    mobileTransitionDuration: 22,
   });
 
   const speech = useMascotSpeech({
@@ -479,6 +495,8 @@ const speech = useMascotSpeech({
     preserveSilence: true,
     similarityThreshold: 0.6,
     preserveCriticalVisemes: true,
+    desktopTransitionDuration: 11,
+    mobileTransitionDuration: 22,
   }
 });
 ```
