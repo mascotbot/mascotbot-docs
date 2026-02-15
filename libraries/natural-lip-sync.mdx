@@ -171,8 +171,41 @@ similarityThreshold: 0.8
 
 ### preserveCriticalVisemes
 
-**Default**: true  
+**Default**: true
 **Purpose**: Whether to preserve critical visemes that are characteristic for speech clarity. When enabled, visemes for sounds like "u", "o", "l", "v" are never skipped, ensuring they remain visually readable even when they pass quickly in speech.
+
+### desktopTransitionDuration
+
+**Default**: 11
+**Range**: 5-30
+**Purpose**: Controls how quickly the Rive animation transitions between mouth shapes on desktop devices. Lower values create snappier, more responsive transitions. Higher values create smoother, more blended transitions.
+
+```tsx
+// Snappy, responsive transitions
+desktopTransitionDuration: 8
+
+// Smooth, blended transitions
+desktopTransitionDuration: 20
+```
+
+### mobileTransitionDuration
+
+**Default**: 22
+**Range**: 10-40
+**Purpose**: Same as `desktopTransitionDuration` but for mobile devices. The default is higher than desktop because mobile rendering benefits from smoother transitions to reduce visual jitter.
+
+```tsx
+// Configure both platforms
+naturalLipSyncConfig: {
+  desktopTransitionDuration: 11,
+  mobileTransitionDuration: 22,
+  // ... other settings
+}
+```
+
+<Info>
+The SDK automatically detects whether the user is on a mobile or desktop device and applies the appropriate transition duration. You only need to configure these if you want to override the defaults.
+</Info>
 
 ## Preset Configurations
 
