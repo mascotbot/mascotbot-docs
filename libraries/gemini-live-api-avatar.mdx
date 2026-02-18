@@ -311,7 +311,7 @@ The ephemeral token flow provides a strong security boundary:
 
 ```mermaid
 flowchart TD
-    subgraph SERVER["SERVER / API Route"]
+    subgraph SERVER["Your Server / API Route"]
         direction TB
         SECRETS["API Key + System Instructions + Voice Config + Generation Config"]
         SECRETS --> CREATE["Google AI SDK: ai.authTokens.create"]
