@@ -190,6 +190,7 @@ paths:
         **Supported providers:**
         - `elevenlabs` - ElevenLabs Conversational AI
         - `gemini` - Google Gemini Live API
+        - `openai` - OpenAI Realtime API
       operationId: getSignedUrl
       security:
         - BearerAuth: []
@@ -209,7 +210,7 @@ paths:
                     provider:
                       type: string
                       description: Name of the conversational AI provider
-                      enum: ["elevenlabs", "gemini"]
+                      enum: ["elevenlabs", "gemini", "openai"]
                       example: "elevenlabs"
                     provider_config:
                       type: object
@@ -232,6 +233,15 @@ paths:
                     provider_config:
                       ephemeral_token: "google-ephemeral-token-from-authTokens-create"
                       model: "gemini-2.5-flash-preview"
+              openai:
+                summary: OpenAI Realtime API Configuration (with ephemeral token)
+                value:
+                  config:
+                    provider: "openai"
+                    provider_config:
+                      ephemeral_token: "openai-client-secret-from-realtime-client_secrets"
+                      model: "gpt-realtime"
+                      voice: "marin"
       responses:
         '200':
           description: |
@@ -241,6 +251,8 @@ paths:
             **ElevenLabs:** Returns a `signed_url` — use it directly as the WebSocket URL with the ElevenLabs SDK.
 
             **Gemini:** Returns `api_key` and `base_url` — pass them to the Google AI SDK as `apiKey` and `httpOptions.baseUrl`.
+
+            **OpenAI:** Returns a `signed_url` — use it as the WebSocket URL in `OpenAIRealtimeWebSocket`'s `createWebSocket` factory.
           content:
             application/json:
               schema:
@@ -248,7 +260,7 @@ paths:
                 properties:
                   signed_url:
                     type: string
-                    description: (ElevenLabs) Signed WebSocket URL with encrypted token
+                    description: (ElevenLabs, OpenAI) Signed WebSocket URL with encrypted token. For ElevenLabs, use directly as the WebSocket URL. For OpenAI, pass to createWebSocket in OpenAIRealtimeWebSocket.
                     example: "wss://api.mascot.bot/v1/conversation?token=eyJhbGciOiJIUzI1NiIs..."
                   api_key:
                     type: string

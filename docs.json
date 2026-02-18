@@ -39,6 +39,7 @@
                   "libraries/react-sdk",
                   "libraries/elevenlabs-avatar",
                   "libraries/gemini-live-api-avatar",
+                  "libraries/openai-realtime-api-avatar",
                   "libraries/natural-lip-sync",
                   "libraries/prefetching-advanced-control",
                   "libraries/react-troubleshooting"

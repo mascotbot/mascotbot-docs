@@ -3,4 +3,9 @@ title: "Get Signed URL"
 openapi: "POST /v1/get-signed-url"
 ---
 
-Send you provider connection details and get a signed WebSockets URL on our server that will setup a connection between your client SDK and ElevenLabs Conversation AI Agents, with Visemes being injected into the stream.
+Send your provider connection details and get a signed WebSocket URL on our server that sets up a proxied connection between your client SDK and your chosen conversational AI provider — with real-time visemes injected into the stream for avatar lip sync.
+
+**Supported providers:**
+- **`elevenlabs`** — ElevenLabs Conversational AI Agents
+- **`gemini`** — Google Gemini Live API
+- **`openai`** — OpenAI Realtime API
