@@ -309,7 +309,39 @@ Required environment variables:
 
 The ephemeral token flow provides a strong security boundary:
 
-<img src="/images/mermaid-diagram-2026-02-06-123746.svg" alt="Ephemeral Token Security Model - Server creates Google ephemeral token with locked config, passes through Mascot Bot proxy, client receives only wrapped token" style={{ width: '100%', maxWidth: '720px', margin: '1rem auto', display: 'block' }} />
+```mermaid
+flowchart TD
+    subgraph SERVER["SERVER / API Route"]
+        direction TB
+        SECRETS["API Key + System Instructions + Voice Config + Generation Config"]
+        SECRETS --> CREATE["Google AI SDK: ai.authTokens.create"]
+        CREATE --> GTOKEN["Ephemeral Token - single-use, config locked"]
+        GTOKEN --> PROXY["Mascot Bot Proxy: POST /v1/get-signed-url"]
+        PROXY --> WRAPPED["Wrapped Token"]
+    end
+
+    WRAPPED -->|"Only token + model leave the server"| RECEIVES
+
+    subgraph CLIENT["Client Browser"]
+        direction TB
+        RECEIVES["Receives: baseUrl, ephemeralToken, model"] --> SDK["Google AI SDK: new GoogleGenAI"]
+        SDK --> CONNECT["ai.live.connect - model only, no config"]
+    end
+
+    CONNECT -->|"WebSocket via Mascot Bot Proxy"| GEMINI["Gemini Live API + Viseme Injection"]
+
+    style SERVER fill:#1a2332,stroke:#3b82f6,stroke-width:2px,color:#e2e8f0
+    style CLIENT fill:#1a2332,stroke:#f59e0b,stroke-width:2px,color:#e2e8f0
+    style SECRETS fill:#3b1a1a,stroke:#ef4444,color:#fca5a5
+    style CREATE fill:#1e3a5f,stroke:#60a5fa,color:#e2e8f0
+    style GTOKEN fill:#1e4d3a,stroke:#34d399,color:#e2e8f0
+    style PROXY fill:#1e3a5f,stroke:#60a5fa,color:#e2e8f0
+    style WRAPPED fill:#1e4d3a,stroke:#34d399,color:#e2e8f0
+    style RECEIVES fill:#3b2e1a,stroke:#f59e0b,color:#e2e8f0
+    style SDK fill:#3b2e1a,stroke:#f59e0b,color:#e2e8f0
+    style CONNECT fill:#3b2e1a,stroke:#f59e0b,color:#e2e8f0
+    style GEMINI fill:#1e3a5f,stroke:#8b5cf6,color:#e2e8f0
+```
 
 Key security properties:
 - **`uses: 1`** — Token expires after a single connection
