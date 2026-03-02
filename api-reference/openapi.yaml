@@ -328,7 +328,7 @@ paths:
                 tts_engine:
                   type: string
                   description: TTS engine to use
-                  enum: ["mascotbot", "elevenlabs", "cartesia"]
+                  enum: ["mascotbot-tts", "elevenlabs", "cartesia"]
                   default: "elevenlabs"
                   example: "elevenlabs"
                 tts_api_key:
