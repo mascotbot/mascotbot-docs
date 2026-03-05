@@ -1,0 +1,195 @@
+asyncapi: 3.0.0
+info:
+  title: Mascot Bot WebSocket API
+  version: 1.0.0
+  description: WebSocket proxy for Google Gemini Live API with automatic viseme generation
+channels:
+  geminiProxy:
+    title: Gemini Live API Proxy
+    description: |
+      Connect to Google Gemini Live API with automatic viseme generation.
+
+      Audio responses include a `mascotVisemes` field with synchronized viseme data for facial animation.
+
+      <Note>
+      Due to a Mintlify limitation, received messages may display as `{}` in the playground. The actual response data is being received correctly — you can inspect it in your browser's DevTools under the Network tab → WS → Messages (UTF-8).
+      </Note>
+
+    address: /v1/conversation/gemini?key={geminiApiKey}&mascot_key={mascotApiKey}&viseme_model={visemeModel}
+    parameters:
+      geminiApiKey:
+        description: Your Google Gemini API key
+        default: YOUR_GEMINI_API_KEY
+      mascotApiKey:
+        description: Your Mascot Bot API key
+        default: YOUR_MASCOT_API_KEY
+      visemeModel:
+        description: |
+          Viseme model to use for lip sync prediction. Different models are optimized for different languages.
+          Available: `default` (English), `indonesian` (Bahasa Indonesia).
+        default: default
+    messages:
+      SetupMessage:
+        $ref: '#/components/messages/SetupMessage'
+      TextMessage:
+        $ref: '#/components/messages/TextMessage'
+      AudioResponse:
+        $ref: '#/components/messages/AudioResponse'
+servers:
+  local:
+    host: localhost:3333
+    protocol: ws
+  production:
+    host: api.mascot.bot
+    protocol: wss
+operations:
+  sendSetup:
+    action: receive
+    channel:
+      $ref: '#/channels/geminiProxy'
+    messages:
+      - $ref: '#/channels/geminiProxy/messages/SetupMessage'
+  sendTextMessage:
+    action: receive
+    channel:
+      $ref: '#/channels/geminiProxy'
+    messages:
+      - $ref: '#/channels/geminiProxy/messages/TextMessage'
+  receiveAudioResponse:
+    action: send
+    channel:
+      $ref: '#/channels/geminiProxy'
+    messages:
+      - $ref: '#/channels/geminiProxy/messages/AudioResponse'
+components:
+  messages:
+    SetupMessage:
+      title: Setup Message
+      description: Initialize the Gemini session with model and configuration
+      payload:
+        type: object
+        properties:
+          setup:
+            type: object
+            description: Session configuration
+            properties:
+              model:
+                type: string
+                description: Gemini model to use
+                default: models/gemini-2.0-flash-exp
+              generationConfig:
+                type: object
+                description: Generation settings
+                default:
+                  responseModalities:
+                    - AUDIO
+                  speechConfig:
+                    voiceConfig:
+                      prebuiltVoiceConfig:
+                        voiceName: Aoede
+        required:
+          - setup
+    TextMessage:
+      title: Text Message
+      description: Send a text message to Gemini
+      payload:
+        type: object
+        properties:
+          clientContent:
+            type: object
+            description: Message content
+            properties:
+              turns:
+                type: array
+                description: Conversation turns
+                default:
+                  - role: user
+                    parts:
+                      - text: hello
+              turnComplete:
+                type: boolean
+                description: Whether this completes the turn
+                default: true
+        required:
+          - clientContent
+    AudioResponse:
+      title: Audio Response
+      description: Audio response from Gemini with viseme data
+      contentType: application/json
+      payload:
+        type: object
+        properties:
+          serverContent:
+            type: object
+            description: Gemini server response containing audio
+            properties:
+              modelTurn:
+                type: object
+                properties:
+                  parts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        inlineData:
+                          type: object
+                          properties:
+                            mimeType:
+                              type: string
+                              description: Audio MIME type
+                              example: audio/pcm;rate=24000
+                            data:
+                              type: string
+                              description: Base64-encoded PCM audio data
+          mascotVisemes:
+            type: object
+            description: Synchronized viseme data for lip sync
+            properties:
+              visemes:
+                type: array
+                description: Array of viseme timing data
+                items:
+                  type: object
+                  properties:
+                    visemeId:
+                      type: integer
+                      description: Viseme ID (0-21, Microsoft SAPI mapping)
+                    offset:
+                      type: number
+                      description: Timing offset in milliseconds
+              audio_event_id:
+                type: integer
+                description: Unique identifier for audio correlation
+              subchunk_id:
+                type: integer
+                description: Current chunk number
+              total_chunks:
+                type: integer
+                description: Total chunks in segment
+              audio_duration:
+                type: number
+                description: Audio duration in milliseconds
+      examples:
+        - name: Audio with Visemes
+          summary: Gemini audio response with synchronized viseme data
+          payload:
+            serverContent:
+              modelTurn:
+                parts:
+                  - inlineData:
+                      mimeType: audio/pcm;rate=24000
+                      data: "CAE1/kP7f/rU/E4A0wJwBK4EAgTRA8EDawTFBLUERgWMBsoIngqnDQ..."
+            mascotVisemes:
+              visemes:
+                - visemeId: 4
+                  offset: 12
+                - visemeId: 18
+                  offset: 108
+                - visemeId: 20
+                  offset: 121
+                - visemeId: 6
+                  offset: 204
+              audio_event_id: 3001
+              subchunk_id: 1
+              total_chunks: 1
+              audio_duration: 720

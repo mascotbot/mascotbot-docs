@@ -8,7 +8,14 @@ Convert text to speech using various TTS engines and generate synchronized visem
 ## Supported TTS Engines
 
 - **mascotbot** (default): Built-in TTS engine
-- **elevenlabs**: High-quality TTS with custom voices  
+- **elevenlabs**: High-quality TTS with custom voices
 - **cartesia**: Alternative TTS provider
 
-The response streams both audio chunks (base64-encoded PCM) and viseme timing data. 
+The response streams both audio chunks (base64-encoded PCM) and viseme timing data.
+
+## Language-Specific Models
+
+Use the optional `model` parameter to select a viseme model optimized for your content's language:
+
+- `"default"` — English (used when `model` is omitted)
+- `"indonesian"` — Bahasa Indonesia

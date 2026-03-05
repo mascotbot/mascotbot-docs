@@ -10,11 +10,22 @@ Welcome to the Mascotbot Viseme Prediction API documentation. This API provides 
 ### `/v1/visemes` - Process Audio for Visemes
 Process existing audio files to generate viseme predictions for facial animation. Ideal when you already have audio and need synchronized mouth movements.
 
-### `/v1/visemes-audio` - Generate Speech and Visemes  
+### `/v1/visemes-audio` - Generate Speech and Visemes
 Convert text to speech while simultaneously generating viseme predictions. Supports multiple TTS engines including ElevenLabs and Cartesia for high-quality voice synthesis.
 
 ### `/v1/get-signed-url` - Generate a signed URL for conversational AI with visemes
-Get a temporary signed URL (expires in 10 minutes) for connecting to a conversational AI proxy. Supports ElevenLabs Conversational AI and Gemini Live API — the proxy enriches the audio stream with synchronized viseme data for avatar lip sync.
+Get a temporary signed URL (expires in 10 minutes) for connecting to a conversational AI proxy. Supports ElevenLabs Conversational AI, Gemini Live API, and OpenAI Realtime API — the proxy enriches the audio stream with synchronized viseme data for avatar lip sync.
+
+## Language-Specific Viseme Models
+
+All endpoints support an optional `model` parameter to select a language-optimized viseme prediction model. This improves lip sync accuracy for non-English content.
+
+| Model | Language | Parameter Value |
+|-------|----------|-----------------|
+| Default | English | `"default"` (or omit) |
+| Indonesian | Bahasa Indonesia | `"indonesian"` |
+
+Pass `"model": "indonesian"` in the request body (for REST endpoints) or `viseme_model=indonesian` as a query parameter (for WebSocket endpoints). If omitted, the default English model is used.
 
 ## Real-time Streaming
 Both endpoints use Server-Sent Events (SSE) to provide real-time streaming responses, enabling low-latency playback and immediate visual feedback.

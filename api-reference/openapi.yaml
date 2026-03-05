@@ -126,6 +126,14 @@ paths:
                   description: Audio sample rate in Hz
                   default: 16000
                   example: 16000
+                model:
+                  type: string
+                  description: |
+                    Viseme model to use for prediction. Different models are optimized for different languages.
+                    Available models: `default` (English), `indonesian` (Bahasa Indonesia).
+                  default: "default"
+                  enum: ["default", "indonesian"]
+                  example: "default"
       responses:
         '200':
           description: |
@@ -214,7 +222,17 @@ paths:
                       example: "elevenlabs"
                     provider_config:
                       type: object
-                      description: Provider-specific configuration (varies by provider)
+                      description: |
+                        Provider-specific configuration (varies by provider).
+                        All providers support an optional `viseme_model` field to select the viseme prediction model.
+                      properties:
+                        viseme_model:
+                          type: string
+                          description: |
+                            Viseme model to use for lip sync prediction. Different models are optimized for different languages.
+                            Available models: `default` (English), `indonesian` (Bahasa Indonesia).
+                          default: "default"
+                          enum: ["default", "indonesian"]
             examples:
               elevenlabs:
                 summary: ElevenLabs Configuration
@@ -225,6 +243,16 @@ paths:
                       api_key: "sk_your_elevenlabs_api_key_here"
                       agent_id: "agent_1234567890"
                       sample_rate: 16000
+              elevenlabs_indonesian:
+                summary: ElevenLabs with Indonesian Viseme Model
+                value:
+                  config:
+                    provider: "elevenlabs"
+                    provider_config:
+                      api_key: "sk_your_elevenlabs_api_key_here"
+                      agent_id: "agent_1234567890"
+                      sample_rate: 16000
+                      viseme_model: "indonesian"
               gemini:
                 summary: Gemini Configuration (with ephemeral token)
                 value:
@@ -342,6 +370,14 @@ paths:
                   maximum: 2.0
                   default: 1.0
                   example: 1.1
+                model:
+                  type: string
+                  description: |
+                    Viseme model to use for prediction. Different models are optimized for different languages.
+                    Available models: `default` (English), `indonesian` (Bahasa Indonesia).
+                  default: "default"
+                  enum: ["default", "indonesian"]
+                  example: "default"
             examples:
               elevenlabs:
                 summary: ElevenLabs TTS (Recommended)

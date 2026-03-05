@@ -9,3 +9,23 @@ Send your provider connection details and get a signed WebSocket URL on our serv
 - **`elevenlabs`** — ElevenLabs Conversational AI Agents
 - **`gemini`** — Google Gemini Live API
 - **`openai`** — OpenAI Realtime API
+
+## Language-Specific Viseme Models
+
+All providers support an optional `viseme_model` field in `provider_config` to select a language-optimized viseme prediction model:
+
+- `"default"` — English (used when `viseme_model` is omitted)
+- `"indonesian"` — Bahasa Indonesia
+
+```json Example: ElevenLabs with Indonesian model
+{
+  "config": {
+    "provider": "elevenlabs",
+    "provider_config": {
+      "api_key": "sk_your_key",
+      "agent_id": "agent_123",
+      "viseme_model": "indonesian"
+    }
+  }
+}
+```

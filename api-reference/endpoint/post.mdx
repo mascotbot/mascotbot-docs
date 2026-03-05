@@ -4,3 +4,10 @@ openapi: "POST /v1/visemes"
 ---
 
 Process base64 encoded audio and receive streaming viseme predictions using Server-Sent Events (SSE). This endpoint is ideal for real-time facial animation based on audio input.
+
+## Language-Specific Models
+
+Use the optional `model` parameter to select a viseme model optimized for your audio's language:
+
+- `"default"` — English (used when `model` is omitted)
+- `"indonesian"` — Bahasa Indonesia
