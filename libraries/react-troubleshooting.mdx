@@ -51,3 +51,28 @@ If you're experiencing audio problems:
 If the Rive animation isn't working:
 1. Verify your Rive file URL is correct
 2. Check that artboard and animation names match your Rive file
+
+### Lip Sync Breaks Mid-Conversation (ElevenLabs)
+
+If the mouth gets stuck or lip sync stops working during a conversation, the cause is almost always **parent re-renders destroying `MascotPlayback`**.
+
+**What happens:** `useRiveInputs()` returns a new container object on every render. This is a dependency of the internal `useEffect` that creates `MascotPlayback`. Any state change that re-renders an ancestor of `MascotClient` — tool call side effects, polling, UI interactions — cascades through, recreating `MascotPlayback` and killing the active animation-frame loop mid-speech.
+
+**Fix:** Ensure your `MascotClient` tree doesn't re-render when tool calls fire. Two approaches:
+
+1. **Memoize the MascotClient subtree** — pass mutable data (items, callbacks) via a ref, and wrap the `<MascotProvider>` + `<MascotClient>` block in `useMemo(() => ..., [])`:
+
+```tsx
+const propsRef = useRef(props);
+propsRef.current = props;
+
+const widget = useMemo(() => (
+  <MascotProvider>
+    <MascotClient ...>
+      <VoiceContent propsRef={propsRef} />
+    </MascotClient>
+  </MascotProvider>
+), []); // refs are stable — no re-renders
+```
+
+2. **Dispatch to a context** instead of calling parent callbacks directly from tool handlers — this is the pattern used in the reference implementation, where tool results update a separate context rather than flowing back as props through the widget tree.
