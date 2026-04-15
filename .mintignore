@@ -1,0 +1,16 @@
+# Files in this repo that are NOT rendered by Mintlify.
+#
+# Mintlify defaults to picking up every .md/.mdx in the repo. Anything
+# listed here is excluded from the docs build. Keep this in sync with
+# whatever lives outside of `docs.json` navigation.
+
+# Weekly-email source of truth for the /changelog skill. HTML-comment
+# framing (`<!-- entry:... -->`) is invalid MDX syntax. Read by
+# packages/email/buffer-parser.ts in mascotbot-app, never by Mintlify.
+.changelog/
+
+# Mintlify starter-kit reference folder. Not part of the published docs.
+docs-main/
+
+# Misc artifacts that occasionally land at the repo root.
+artifacts/
