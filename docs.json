@@ -89,6 +89,19 @@
             ]
           }
         ]
+      },
+      {
+        "dropdown": "Changelog",
+        "icon": "rectangle-history",
+        "description": "Product updates and release notes",
+        "groups": [
+          {
+            "group": "Latest",
+            "pages": [
+              "changelog"
+            ]
+          }
+        ]
       }
     ],
     "global": {
