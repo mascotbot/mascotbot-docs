@@ -10,6 +10,7 @@
       "claude"
     ]
   },
+  "css": "/custom.css",
   "colors": {
     "primary": "#000000",
     "light": "#FFFFFF",

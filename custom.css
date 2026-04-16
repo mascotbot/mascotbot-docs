@@ -1,0 +1,15 @@
+/*
+ * Custom Mintlify overrides — mascotbot-docs.
+ * Referenced from docs.json via `"css": "/custom.css"`.
+ */
+
+/* ── Changelog: make date badge more visible in dark mode ── */
+
+/* Date badge — Mintlify's default uses primary/10 bg which is
+   near-invisible on dark backgrounds (#000 primary → 10% opacity).
+   Bump to a visible neutral pill. Only targets the date, not the
+   tag label below it. */
+.dark .update-container > div:first-child .cursor-pointer.rounded-lg.font-medium {
+  background-color: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.85);
+}
