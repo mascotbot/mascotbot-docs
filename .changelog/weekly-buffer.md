@@ -49,7 +49,7 @@ The new `react-website-demo` template is a Next.js 16 starter with an ElevenLabs
 - **Persistent across every route** — voice session lives in a React Context singleton, so conversations don't die when users click to a new page
 - **Three client tools wired out of the box** — the agent reads/writes your form, routes between pages, and triggers CTAs
 - **Full stack** — Next.js 16, React 19, TypeScript, ElevenLabs Conversational AI 0.5, MascotBot SDK 0.1.9
-- **<300ms voice latency · 30–45 min setup** — clone, set three env vars, one-click deploy to Vercel
+- **&lt;300ms voice latency · 30–45 min setup** — clone, set three env vars, one-click deploy to Vercel
 - **Companion tutorial** walks through the Context + Router pattern so you can adapt it to any React app
 
 [Read more →](https://templates.mascot.bot/voice-ai-agent-react-tutorial)
