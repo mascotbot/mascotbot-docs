@@ -38,3 +38,38 @@ Pick your preferred real-time model when creating a hosted agent — ElevenLabs,
 [Try it →](https://app.mascot.bot/agents/new)
 
 <!-- /entry -->
+
+<!-- entry:2026-04-18 tag:feature -->
+## Clone a persistent voice AI agent for React and deploy in 30 minutes
+
+The new `react-website-demo` template is a Next.js 16 starter with an ElevenLabs voice widget that survives every page navigation — no re-init, no lost context — plus a companion tutorial that walks through the Context + Router pattern behind it.
+
+![Two layered windows on a dark canvas — behind, a VS Code–style editor showing the react-website-demo template's VoiceProvider.tsx with its tab strip, sidebar file tree, and status bar; in front, a Safari-style browser window rendering the live MovingCo "Moving Made Simple" page with the voice-chat mascot in the bottom-right — code and live preview side-by-side](https://docs.mascot.bot/images/changelog/voice-ai-react-template.png)
+
+- **Persistent across every route** — voice session lives in a React Context singleton, so conversations don't die when users click to a new page
+- **Three client tools wired out of the box** — the agent reads/writes your form, routes between pages, and triggers CTAs
+- **Full stack** — Next.js 16, React 19, TypeScript, ElevenLabs Conversational AI 0.5, MascotBot SDK 0.1.9
+- **<300ms voice latency · 30–45 min setup** — clone, set three env vars, one-click deploy to Vercel
+- **Companion tutorial** walks through the Context + Router pattern so you can adapt it to any React app
+
+[Read more →](https://templates.mascot.bot/voice-ai-agent-react-tutorial)
+
+<!-- /entry -->
+
+<!-- entry:2026-04-18 tag:feature -->
+## Drop a voice avatar onto any website with one line of HTML
+
+Design your widget visually in the dashboard — size, paddings, mobile overrides, custom button label — then paste a single `<script>` tag to ship it. Resize or restyle anytime; the live widget updates instantly without re-pasting the embed.
+
+![Live widget hosting demo on mascot.bot — embedded mascot with Voice Chat button on a mock customer site](https://docs.mascot.bot/images/changelog/widget-hosting-launch.png)
+
+- Visual builder with live desktop + mobile previews — drag sliders or type exact pixel values
+- Optional mobile-specific size + paddings with a configurable breakpoint
+- Bring your own Rive mascot or pick from the preset library
+- Pick any provider under the hood — ElevenLabs, Gemini Live, or OpenAI Realtime
+- Custom idle-state label on the Voice Chat button, plus an optional first-load reveal animation
+- Embed script auto-syncs from saved settings — no re-paste required after a redesign
+
+[Read more →](https://app.mascot.bot/agents/new)
+
+<!-- /entry -->
