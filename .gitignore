@@ -20,4 +20,10 @@ build/
 .idea/
 
 # Logs
-*.log 
+*.log
+
+# Raw captures + concept variants from the /changelog --cover skill.
+# Only the finalized <slug>.png at the top of images/changelog/ is committed;
+# everything under .raw/ is intermediate material (Playwright screenshots,
+# nano-banana generations, rejected concepts) scoped per entry slug.
+images/changelog/.raw/
