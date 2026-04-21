@@ -47,8 +47,9 @@ Mascotbot SDK `0.2.0` adds critical-viseme holds, a configurable critical set, a
 - `criticalVisemeIds` exposes the critical set — drop vowels, add sibilants, whatever fits your character. Exports `DEFAULT_CRITICAL_VISEME_IDS` for consumers to derive custom lists.
 - `desktopTransitionSpeed` / `mobileTransitionSpeed` replace the misleadingly-named `*Duration` fields (old names kept as deprecated aliases). Default bumped from `11` → `22` for snappier blends.
 - Config edits now flow through the active `MascotPlayback` in place; slider tweaks and preset changes don't tear down the stream.
+- Rive runtime bumped to `@rive-app/react-webgl2@4.28.1` / `@rive-app/webgl2@2.37.2` — latest upstream fixes and perf work on the WebGL2 renderer.
 - Perf tuning validated on [`/lipsync-test`](https://www.mascot.bot/lipsync-test): memoized side panels, ref-based viewport pan/zoom, identity short-circuit on per-chunk config sync, NoiseOverlay visibility gate.
 
-[Read more →](https://docs.mascot.bot/changelog#tune-your-mascots-lipsync-mid-call-without-reset)
+[Download →](https://app.mascot.bot/sdk-access)
 
 <!-- /entry -->
