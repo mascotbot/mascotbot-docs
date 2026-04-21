@@ -17,13 +17,13 @@ Attach a subdomain or apex to any hosted agent, then set a per-agent page title,
 - Per-agent SEO: `<title>`, description, OG image, favicon — with a live Slack / Twitter / browser-tab preview right next to the inputs.
 - Works for both standalone and widget-hosted agents, subdomain or apex.
 
-[Read more →](https://docs.mascot.bot/changelog#ship-your-agent-on-your-own-domain)
+[Try it →](https://app.mascot.bot/agents)
 </Update>
 
 <Update label="2026-04-22" tags={["feature"]}>
 ## A lipsync playground against real voice streams
 
-The new `/lipsync-test` tool lets you upload any Rive mascot, wire a Gemini Live session or plug in your own ElevenLabs agent, and dial every SDK knob — critical-viseme holds, min intervals, transition speeds — while the mascot responds in real time.
+The new [`/lipsync-test`](https://www.mascot.bot/lipsync-test) tool lets you upload any Rive mascot, wire a Gemini Live session or plug in your own ElevenLabs agent, and dial every SDK knob — critical-viseme holds, min intervals, transition speeds — while the mascot responds in real time.
 
 <Frame>
 ![The /lipsync-test page rendered as a tilted editorial product shot on a warm cream canvas with a subtle dot grid — a friendly cartoon blue cat mascot sits centered on a sandy beach under a blue sky, flanked on the right by a vertical stack of cream settings panels for Rive File, Display Settings, Voice Provider (Gemini Live / ElevenLabs), Voice, Lip Sync Model, and Lip Sync Settings](/images/changelog/lipsync-test.png)
@@ -35,7 +35,7 @@ The new `/lipsync-test` tool lets you upload any Rive mascot, wire a Gemini Live
 - Replay captured responses against tweaked settings to A/B feel without re-speaking.
 - Upload any `.riv` file to test your own mascot; HD-zoom + pan the canvas to inspect mouth shapes.
 
-[Read more →](https://docs.mascot.bot/changelog#a-lipsync-playground-against-real-voice-streams)
+[Try it →](https://www.mascot.bot/lipsync-test)
 </Update>
 
 <Update label="2026-04-22" tags={["feature"]}>
@@ -51,7 +51,7 @@ Mascotbot SDK `0.2.0` adds critical-viseme holds, a configurable critical set, a
 - `criticalVisemeIds` exposes the critical set — drop vowels, add sibilants, whatever fits your character. Exports `DEFAULT_CRITICAL_VISEME_IDS` for consumers to derive custom lists.
 - `desktopTransitionSpeed` / `mobileTransitionSpeed` replace the misleadingly-named `*Duration` fields (old names kept as deprecated aliases). Default bumped from `11` → `22` for snappier blends.
 - Config edits now flow through the active `MascotPlayback` in place; slider tweaks and preset changes don't tear down the stream.
-- Perf tuning validated on `/lipsync-test`: memoized side panels, ref-based viewport pan/zoom, identity short-circuit on per-chunk config sync, NoiseOverlay visibility gate.
+- Perf tuning validated on [`/lipsync-test`](https://www.mascot.bot/lipsync-test): memoized side panels, ref-based viewport pan/zoom, identity short-circuit on per-chunk config sync, NoiseOverlay visibility gate.
 
 [Read more →](https://docs.mascot.bot/changelog#tune-your-mascots-lipsync-mid-call-without-reset)
 </Update>
