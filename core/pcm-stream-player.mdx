@@ -1,0 +1,151 @@
+---
+title: "createPCMStreamPlayer - Play & Tap Raw PCM for Realtime Lip Sync"
+sidebarTitle: "PCM stream player"
+description: "createPCMStreamPlayer plays streamed PCM16 gap-tolerantly and exposes a parallel MediaStream tap — the bridge for realtime AI providers that hand you raw audio."
+icon: "waveform"
+'og:title': 'createPCMStreamPlayer — Play & Tap Raw PCM | Mascot Bot SDK'
+'og:description': 'Plays streamed PCM16 and exposes a parallel MediaStream tap for lip sync. For Gemini Live and OpenAI Realtime over WebSocket.'
+'og:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+'og:url': 'https://docs.mascot.bot/core/pcm-stream-player'
+'twitter:title': 'createPCMStreamPlayer — Play & Tap Raw PCM'
+'twitter:description': 'Plays streamed PCM16 and exposes a parallel MediaStream tap for lip sync.'
+'twitter:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+---
+
+`createPCMStreamPlayer` does one thing: **play streamed PCM16
+gap-tolerantly, and expose exactly what is playing as a `MediaStream`** you
+can feed to lip sync. It is the bridge for realtime AI providers that hand you
+raw audio chunks and do not play them (Gemini Live, OpenAI Realtime over
+WebSocket) and for server TTS that returns audio only.
+
+It knows nothing about any provider — provider transport parsing is your
+glue and stays in your app.
+
+```ts
+import { createPCMStreamPlayer } from "@mascotbot-sdk/lipsync-core";
+
+const player = createPCMStreamPlayer({ sampleRate: 24000 });
+```
+
+## API
+
+```ts
+const player = createPCMStreamPlayer(options);
+```
+
+`options: PCMStreamPlayerOptions`
+
+| Option | Type | Notes |
+|---|---|---|
+| `sampleRate` | `number` | Required. The PCM sample rate (e.g. `24000` for Gemini Live and OpenAI Realtime). |
+| `initialBufferMs` | `number?` | Pre-roll before playback starts (jitter cushion). |
+| `scheduleAheadMs` | `number?` | How far ahead chunks are scheduled. |
+| `onIdle` | `(() => void)?` | Called once each time the player drains **naturally** (queue empty + every scheduled buffer finished). Not called by `stop()`/`close()`; may re-fire after a later push. See [Knowing when playback finished](#knowing-when-playback-finished). |
+
+Returned `PCMStreamPlayer`:
+
+| Member | Type | Purpose |
+|---|---|---|
+| `pushBase64PCM16(b64)` | `(string) => void` | Enqueue a base64 PCM16 chunk (Gemini `inlineData.data`, server TTS). |
+| `pushPCM16(bytes)` | `(Uint8Array) => void` | Enqueue a PCM16 byte chunk (OpenAI Realtime WS `ArrayBuffer`). |
+| `outputStream` | `MediaStream` (readonly) | The tap — feed this to `useLipsyncStream`. Runs parallel to the speakers. |
+| `isPlaying` | `boolean` (readonly) | `true` while audio is queued or scheduled; flips `false` on natural drain (when `onIdle` fires) or `stop()`. |
+| `stop()` | `() => void` | Drop queued audio immediately (barge-in / interruption). |
+| `resume()` | `() => void` | Resume the underlying `AudioContext` (call inside a user gesture). |
+| `close()` | `() => Promise<void>` | Tear down the player and its audio graph. |
+
+## Pattern
+
+Create the player **inside the user gesture, before any `await`** — an
+`AudioContext` created in a post-fetch microtask starts suspended and cannot
+resume without another gesture.
+
+```ts
+import { createPCMStreamPlayer } from "@mascotbot-sdk/lipsync-core";
+import { useLipsyncStream } from "@mascotbot-sdk/lipsync-react/rive";
+
+const player = createPCMStreamPlayer({ sampleRate: 24000 });
+
+// The tap drives the avatar; the player drives the speakers.
+useLipsyncStream({
+  client,
+  playback,
+  source: { kind: "mediaStream", stream: player.outputStream },
+});
+
+// Gemini Live (@google/genai): assistant audio is base64 PCM16
+session.onmessage = (m) => {
+  const b64 = m?.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
+  if (typeof b64 === "string") player.pushBase64PCM16(b64);
+  if (m?.serverContent?.interrupted) player.stop();
+};
+
+// OpenAI Realtime (WebSocket): assistant audio is a PCM16 ArrayBuffer
+session.on("audio", (e) => player.pushPCM16(new Uint8Array(e.data)));
+session.on("audio_interrupted", () => player.stop());
+```
+
+## Knowing when playback finished
+
+There is no audio element to listen to, so the player surfaces a natural
+end through the `onIdle` option (with an `isPlaying` getter for polling).
+`onIdle` fires the moment the queue empties **and** every scheduled buffer
+has finished — i.e. all pushed audio has actually been heard.
+
+- It does **not** fire on `stop()` or `close()` — those are explicit
+  interruptions, not a natural end.
+- It can fire more than once per player: a push after a drain restarts
+  playback and a later drain fires it again.
+
+This is the signal to drive a **queue / sequential** consumer (streamed-TTS
+playlists, multi-utterance agents): advance to the next item, reset the
+avatar, or release resources — without estimating audio duration from byte
+counts.
+
+```ts
+const player = createPCMStreamPlayer({
+  sampleRate: 24000,
+  onIdle: () => {
+    // All queued audio has played out. If more is still being fetched,
+    // ignore — the next push restarts the player and onIdle fires
+    // again when that drains.
+    if (queue.length > 0 || fetching) return;
+    playback.reset();    // return the avatar to neutral
+    void player.close(); // release the AudioContext (or keep for reuse)
+  },
+});
+```
+
+## When NOT to use it
+
+<Warning>
+Never route a **self-playing** provider through `createPCMStreamPlayer` — you
+would hear the voice twice (double audio). ElevenLabs Conversational AI and
+OpenAI Realtime over **WebRTC** play the audio themselves. For those, do not
+use the player: `captureStream()` their existing playback and feed that to
+`useLipsyncStream({ source: { kind: "mediaStream", stream } })`.
+</Warning>
+
+Decision rule: **does the provider play the audio for you?** Yes → tap its
+playback, no player. No (it hands you raw PCM) → `createPCMStreamPlayer`.
+
+## Server TTS
+
+The same primitive powers "server returns audio only, the SDK does the lip
+sync": your route synthesizes speech and returns base64 PCM16; the client
+plays it through the player and the tap drives the mouth. No server-side
+visemes, no SSE protocol. See [Realtime providers](/realtime/overview).
+
+## Next
+
+<Columns cols={3}>
+  <Card title="Realtime providers" icon="bolt" href="/realtime/overview">
+    The per-provider recipe.
+  </Card>
+  <Card title="Streaming & mic" icon="microphone" href="/libraries/streaming-and-mic">
+    Feeding the tap to lip sync.
+  </Card>
+  <Card title="Core client" icon="cube" href="/core/client">
+    The vanilla engine.
+  </Card>
+</Columns>
