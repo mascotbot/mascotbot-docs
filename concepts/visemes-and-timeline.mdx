@@ -1,0 +1,120 @@
+---
+title: "Visemes & the Viseme Timeline - Mascotbot Lip Sync Data Model"
+sidebarTitle: "Visemes & the timeline"
+description: "How the Mascotbot SDK represents lip sync: viseme ids, the serializable run-length VisemeTimeline, and the framesToTimeline / timelineToCues / parseTimeline helpers."
+icon: "waveform-lines"
+'og:title': 'Visemes & the Viseme Timeline | Mascot Bot SDK'
+'og:description': 'The serializable run-length viseme timeline that powers offline generate → persist → replay, plus the pure converter helpers.'
+'og:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+'og:url': 'https://docs.mascot.bot/concepts/visemes-and-timeline'
+'twitter:title': 'Visemes & the Viseme Timeline | Mascot Bot SDK'
+'twitter:description': 'The serializable lip sync data model and its pure converter helpers.'
+'twitter:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+---
+
+A **viseme** is the visual shape of the mouth for a sound — the visual
+counterpart of a phoneme. The SDK emits one of 22 viseme ids (`0`–`21`).
+Internally, ready-made Rive mascots map those onto number inputs `100`–`118`
+via the exported `VISEMES_MAP`; you rarely touch the raw ids directly.
+
+## The model output
+
+Inference produces one viseme id per **10 ms frame**. `client.processAudio()`
+returns that as a `VisemeTimeline`, not a raw array:
+
+```ts
+const { timeline, durationMs, speechMs } = await client.processAudio(audio16kMono);
+```
+
+`processAudio()` returns the timeline directly. It is run-length-encoded,
+~10× smaller than a per-frame array, and is exactly the change-event model the
+playback engine consumes, so there is no second representation to keep in sync.
+
+## The `VisemeTimeline` shape
+
+```ts
+interface VisemeCue {
+  t: number; // start time in ms
+  v: number; // viseme id 0..21
+}
+
+interface VisemeTimeline {
+  version: number;     // VISEME_TIMELINE_VERSION (currently 1)
+  durationMs: number;  // total audio duration
+  speechMs: number;    // non-silent ms detected (metering, preserved across persist/replay)
+  frameMs: number;     // engine frame interval the cues align to (10)
+  cues: VisemeCue[];   // run-length; strictly increasing t; first cue is t: 0
+}
+```
+
+It is plain JSON. Persist it anywhere — `localStorage`, your database, a CDN,
+a file — and replay it later without touching the model, the network, or a
+license refresh.
+
+```json
+{
+  "version": 1,
+  "durationMs": 1840,
+  "speechMs": 1610,
+  "frameMs": 10,
+  "cues": [
+    { "t": 0, "v": 0 },
+    { "t": 120, "v": 7 },
+    { "t": 260, "v": 19 },
+    { "t": 410, "v": 0 }
+  ]
+}
+```
+
+## Helpers
+
+All three are pure functions on the package root.
+
+| Helper | Signature | Purpose |
+|---|---|---|
+| `framesToTimeline` | `(argmax: readonly number[], opts: { speechMs: number; frameMs?: number }) → VisemeTimeline` | Build a timeline from a per-frame viseme array (if you assemble visemes yourself). |
+| `timelineToCues` | `(tl: VisemeTimeline) → { offset: number; visemeId: number }[]` | Expand a timeline into the cue list `MascotPlayback` consumes. The inverse of the change-event encoding. |
+| `parseTimeline` | `(input: unknown) → VisemeTimeline` | Validate untrusted/persisted JSON and return a typed timeline, or throw. |
+
+```ts
+import { framesToTimeline, timelineToCues, parseTimeline } from "@mascotbot-sdk/lipsync-core";
+```
+
+## `parseTimeline` is the trust boundary
+
+Persisted JSON outlives SDK versions. `parseTimeline` is the single gate for
+loading a timeline back: it validates `version`, `frameMs`, monotonic cue
+offsets, the leading `t: 0`, and viseme-id ranges. On any mismatch it throws a
+`LipsyncError` whose `.code === "bad_timeline"`:
+
+```ts
+import { parseTimeline, LipsyncError } from "@mascotbot-sdk/lipsync-core";
+
+try {
+  const tl = parseTimeline(JSON.parse(stored));
+  playback.setTimeline(tl);
+} catch (err) {
+  if (err instanceof LipsyncError && err.code === "bad_timeline") {
+    // stale or corrupt — regenerate via client.processAudio()
+  }
+}
+```
+
+`VISEME_TIMELINE_VERSION` is bumped on any breaking shape or semantics change,
+so an old stored timeline fails loudly instead of animating garbage. Treat
+`bad_timeline` as "regenerate", never as a license or network condition. It is
+documented in the [error-code reference](/reference/error-codes).
+
+## Next
+
+<Columns cols={3}>
+  <Card title="Offline lip sync" icon="box-archive" href="/libraries/offline-lipsync">
+    Generate → persist → replay in practice.
+  </Card>
+  <Card title="Rive co-existence" icon="puzzle-piece" href="/concepts/rive-coexistence">
+    How visemes reach the avatar.
+  </Card>
+  <Card title="Core client" icon="cube" href="/core/client">
+    `processAudio`, streaming sessions.
+  </Card>
+</Columns>

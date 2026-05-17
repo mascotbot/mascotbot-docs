@@ -1,0 +1,245 @@
+---
+title: "Mascotbot Lipsync SDK Quickstart - Animate a Rive Avatar in Minutes"
+sidebarTitle: "Quickstart"
+description: "Wire the Mascotbot lipsync SDK into a React app: provider setup, drive a Rive avatar from an audio file, add live microphone input, or use the vanilla core without React."
+icon: "rocket"
+'og:title': 'Mascotbot Lipsync SDK Quickstart | Mascot Bot'
+'og:description': 'Provider setup, drive a Rive avatar from audio, add live mic input, and the vanilla JS path — a working real-time avatar in minutes.'
+'og:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+'og:url': 'https://docs.mascot.bot/quickstart'
+'twitter:title': 'Mascotbot Lipsync SDK Quickstart'
+'twitter:description': 'A working real-time avatar in minutes — React and vanilla JS.'
+'twitter:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+---
+
+This gets you from an installed package to a talking avatar. If you have not
+installed yet, do [Installation](/installation) first.
+
+## 1. Mount the provider
+
+`<LipsyncProvider>` initializes a single `MascotLipsyncClient` for your app
+and exposes it through context.
+
+```tsx
+// app/layout.tsx (or wherever you mount providers)
+"use client";
+import { LipsyncProvider } from "@mascotbot-sdk/lipsync-react";
+
+export default function Layout({ children }: { children: React.ReactNode }) {
+  return <LipsyncProvider apiKey="mascot_pub_…">{children}</LipsyncProvider>;
+}
+```
+
+Anywhere inside it, `useLipsync()` gives you the client and status, and
+`useProcessAudio()` fetches a URL, decodes, resamples to 16 kHz, and runs
+inference once:
+
+```tsx
+"use client";
+import { useLipsync, useProcessAudio } from "@mascotbot-sdk/lipsync-react";
+
+export function Demo() {
+  const { status, error } = useLipsync();
+  const { result, loading } = useProcessAudio("/audio/greeting.wav");
+
+  if (status === "initializing") return <p>Loading SDK…</p>;
+  if (status === "error") return <p>{error?.message}</p>;
+  if (loading || !result) return <p>Processing audio…</p>;
+
+  // result.timeline   — serializable viseme timeline (the offline artifact)
+  // result.durationMs — total audio duration
+  // result.speechMs   — non-silent ms detected
+  return <pre>{JSON.stringify(result.timeline, null, 2)}</pre>;
+}
+```
+
+`result.timeline` is a [`VisemeTimeline`](/concepts/visemes-and-timeline) —
+hand it to playback below, or `JSON.stringify` it to persist and replay later
+with zero reprocessing.
+
+## 2. Drive a Rive avatar
+
+Wire the timeline into a Rive avatar's mouth state machine with the `/rive`
+subpath:
+
+```tsx
+"use client";
+import { LipsyncProvider, useLipsync, useProcessAudio } from "@mascotbot-sdk/lipsync-react";
+import {
+  MascotProvider,
+  MascotClient,
+  MascotRive,
+  useMascotPlayback,
+  Fit,
+  Alignment,
+} from "@mascotbot-sdk/lipsync-react/rive";
+
+function App() {
+  return (
+    <LipsyncProvider apiKey="mascot_pub_…">
+      <MascotProvider>
+        <MascotClient
+          src="/mascot-fox.riv"
+          layout={{ fit: Fit.Contain, alignment: Alignment.Center }}
+        >
+          <MascotRive />
+          <SamplePlayer />
+        </MascotClient>
+      </MascotProvider>
+    </LipsyncProvider>
+  );
+}
+
+function SamplePlayer() {
+  const { status } = useLipsync();
+  const { result } = useProcessAudio("/audio/greeting.wav");
+  const playback = useMascotPlayback({ enableNaturalLipSync: true });
+
+  function play() {
+    if (status !== "ready" || !result) return;
+    new Audio("/audio/greeting.wav").play().catch(() => {});
+    playback.setTimeline(result.timeline); // offline timeline → mouth
+    playback.play();
+  }
+
+  return (
+    <button onClick={play} disabled={status !== "ready" || !result}>
+      Play
+    </button>
+  );
+}
+```
+
+<Tip>
+`useProcessAudio` runs inference once. Persist `result.timeline` (it is plain
+JSON) and on later loads skip decode + inference entirely:
+`playback.setTimeline(parseTimeline(JSON.parse(stored)))`. See
+[Offline lip sync](/libraries/offline-lipsync).
+</Tip>
+
+### Rive avatar requirements
+
+If you author your own `.riv` file:
+
+| Element | Requirement |
+|---|---|
+| Artboard name | `Character` |
+| State machine name | `mascotStateMachine` |
+| Mouth inputs | Number inputs `100`–`118` (viseme ids) |
+| Emotion inputs (optional) | `is_speaking`, `eyes_smile` |
+| Stress input (optional) | `stress` (number) |
+
+The SDK writes only those inputs. Any other input, data binding, or event on
+the file is yours to drive on the raw `rive` instance
+(`useMascotRive().rive`) — see [Rive co-existence](/concepts/rive-coexistence).
+Or skip authoring entirely and use a [ready-made mascot](/mascots/ready-to-use-mascots).
+
+## 3. Live microphone input
+
+Drive the avatar from the user's microphone in real time with
+`useLipsyncStream`:
+
+```tsx
+"use client";
+import { useEffect, useState } from "react";
+import { useLipsync } from "@mascotbot-sdk/lipsync-react";
+import { useMascotPlayback, useLipsyncStream } from "@mascotbot-sdk/lipsync-react/rive";
+
+function MicAvatar() {
+  const { client, status } = useLipsync();
+  const playback = useMascotPlayback({ stream: true, enableNaturalLipSync: true });
+  const [active, setActive] = useState(false);
+  const isLive = active && status === "ready" && !!client;
+
+  const { error } = useLipsyncStream({
+    client,
+    playback,
+    source: { kind: "mic" },
+    enabled: isLive, // gates getUserMedia + the audio graph without unmount
+  });
+
+  useEffect(() => {
+    if (status !== "ready") setActive(false);
+  }, [status]);
+
+  return (
+    <>
+      <button onClick={() => setActive((v) => !v)} disabled={status !== "ready"}>
+        {active ? "Stop mic" : "Start mic"}
+      </button>
+      {error && <p>{error.message}</p>}
+    </>
+  );
+}
+```
+
+The audio worklet is embedded in the SDK and served from a Blob URL by
+default — there is no file to copy. Pass `workletUrl` only if your CSP forbids
+`worker-src blob:`. The same hook handles realtime AI providers via
+`source: { kind: "mediaStream", stream }` — see
+[Realtime providers](/realtime/overview).
+
+## 4. Vanilla JavaScript
+
+Not using React? Use `@mascotbot-sdk/lipsync-core` directly:
+
+```ts
+import { MascotLipsyncClient, parseTimeline } from "@mascotbot-sdk/lipsync-core";
+
+const client = await MascotLipsyncClient.init({
+  apiKey: "mascot_pub_…",
+  userId: "user_42", // optional, for accurate usage attribution
+});
+
+// Pre-recorded audio (16 kHz mono Float32 in [-1, 1])
+const { timeline } = await client.processAudio(audioBuffer);
+localStorage.setItem("greeting.vtl", JSON.stringify(timeline)); // persist
+// later: parseTimeline(JSON.parse(localStorage.getItem("greeting.vtl")!))
+
+// Live streaming: push 25 ms (400-sample) windows one at a time
+const session = client.createStreamingSession();
+const frame = await session.pushWindow(audioWindow);
+console.log(frame.visemeId, frame.silenceDetected);
+
+await client.stop(); // release resources when done
+```
+
+For the Rive engine without React, import from
+`@mascotbot-sdk/lipsync-core/rive` — see [Core SDK](/core/client).
+
+## Error handling
+
+`useLipsync()` exposes `status` and `error`. Branch on `error.code`, not the
+subclass:
+
+```tsx
+import { RefusedError, NetworkError, EngineError } from "@mascotbot-sdk/lipsync-react";
+
+function StatusUI() {
+  const { status, error } = useLipsync();
+  if (status !== "error" && status !== "refused") return null;
+  if (error instanceof RefusedError) {
+    if (error.code === "key_disabled") return <ReSubscribe />;
+    if (error.code === "dev_key_on_public_domain") return <UseProdKey />;
+  }
+  if (error instanceof NetworkError) return <p>Network issue — retry</p>;
+  if (error instanceof EngineError) return <p>Inference error — refresh</p>;
+  return <p>{error?.message}</p>;
+}
+```
+
+Full matrix: [Error codes](/reference/error-codes).
+
+## Next
+
+<Columns cols={3}>
+  <Card title="Offline lip sync" icon="box-archive" href="/libraries/offline-lipsync">
+    Generate → persist → replay.
+  </Card>
+  <Card title="React hooks" icon="react" href="/libraries/react-hooks">
+    The full hook reference.
+  </Card>
+  <Card title="Realtime providers" icon="bolt" href="/realtime/overview">
+    OpenAI, Gemini, ElevenLabs.
+  </Card>
+</Columns>

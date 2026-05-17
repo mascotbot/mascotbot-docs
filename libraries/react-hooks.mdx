@@ -1,0 +1,154 @@
+---
+title: "Mascotbot React Hooks Reference - useLipsync, useMascotPlayback & More"
+sidebarTitle: "Hooks reference"
+description: "Complete reference for the Mascotbot lipsync React hooks: useLipsync, useProcessAudio, useMascotRive, useMascotInputs, useMascotPlayback, useLipsyncStream, useLoadRive, and useRiveAsset."
+icon: "code"
+'og:title': 'Mascotbot React Hooks Reference | Mascot Bot SDK'
+'og:description': 'Every hook in @mascotbot-sdk/lipsync-react and /rive — signatures, return shapes, and usage.'
+'og:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+'og:url': 'https://docs.mascot.bot/libraries/react-hooks'
+'twitter:title': 'Mascotbot React Hooks Reference | Mascot Bot SDK'
+'twitter:description': 'Every lipsync React hook — signatures, return shapes, usage.'
+'twitter:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+---
+
+Every hook in the React SDK, grouped by subpath. Audio-pipeline hooks come
+from `@mascotbot-sdk/lipsync-react`; Rive hooks from
+`@mascotbot-sdk/lipsync-react/rive`.
+
+## Audio pipeline — `@mascotbot-sdk/lipsync-react`
+
+### `useLipsync()`
+
+```ts
+const { client, status, error, reload } = useLipsync();
+```
+
+The licensed inference client from the enclosing `<LipsyncProvider>`.
+
+| Field | Type | Notes |
+|---|---|---|
+| `client` | `MascotLipsyncClient \| null` | `null` until init resolves |
+| `status` | `LipsyncStatus` | `idle \| initializing \| ready \| running \| degraded \| refused \| error` |
+| `error` | `Error \| null` | A typed [error](/reference/error-codes) on `refused` / `error` |
+| `reload` | `() => void` | Re-runs init (e.g. after the user fixes a key) |
+
+Gate audio work on `status === "ready"`.
+
+### `useProcessAudio(audioUrl)`
+
+```ts
+const { result, loading, error } = useProcessAudio("/audio/greeting.wav");
+```
+
+Fetches the URL, decodes, resamples to 16 kHz, and runs inference **once**.
+Pass `null` to skip. `result` is a `ProcessAudioResult`:
+
+```ts
+result.timeline;   // VisemeTimeline — the serializable artifact
+result.durationMs; // total audio duration
+result.speechMs;   // non-silent ms detected
+```
+
+Hand `result.timeline` to `useMascotPlayback().setTimeline()`, or
+`JSON.stringify` it to persist and replay later with zero reprocessing —
+[Offline lip sync](/libraries/offline-lipsync).
+
+## Rive layer — `@mascotbot-sdk/lipsync-react/rive`
+
+### `useMascotRive()`
+
+```ts
+const { rive, isRiveLoaded, RiveComponent, setImageAsset } = useMascotRive();
+```
+
+The Rive instance + canvas for the enclosing `<MascotClient>`. `rive` is the
+**raw, unmodified** `@rive-app/*` instance — yours for data binding, custom
+inputs, events, and ViewModels. The SDK never wraps it. `setImageAsset` swaps
+a runtime image asset (e.g. a custom face texture).
+
+### `useMascotInputs<T>()`
+
+```ts
+const { riveInputs, custom, has } = useMascotInputs<"wave" | "reveal">();
+if (has("wave")) custom.wave.fire();
+```
+
+| Field | Notes |
+|---|---|
+| `riveInputs` | SDK-driven input handles (mouth / `is_speaking` / `stress`) |
+| `custom` | Your declared inputs, typed by `T`. **Never `undefined`** |
+| `has(name)` | Authoritative presence check — use this, never raw `rive.stateMachineInputs()` |
+
+This is the supported way to detect and drive non-mouth inputs. See
+[Rive co-existence](/concepts/rive-coexistence).
+
+### `useMascotPlayback(options?)`
+
+```ts
+const playback = useMascotPlayback({ stream: true, enableNaturalLipSync: true });
+playback.setTimeline(result.timeline);       // offline replay
+playback.pushVisemes(cues);                  // streaming append
+playback.stress([{ offset: 0, stress: 1 }]); // SDK-driven emphasis cues
+playback.play(); playback.pause(); playback.seek(0); playback.reset();
+```
+
+Wraps the framework-agnostic `MascotPlayback`. `stress([{ offset, stress }])`
+schedules emphasis cues — the SDK animates the Rive `stress` input from them
+on the playback clock (see [Stress emphasis](/realtime/overview#stress-emphasis-and-gestures)).
+Options:
+
+| Option | Type | Purpose |
+|---|---|---|
+| `stream` | `boolean` | Streaming mode (mic / realtime); pair with `useLipsyncStream` |
+| `enableNaturalLipSync` | `boolean` | Smoother, less robotic merging |
+| `naturalLipSyncConfig` | `Partial<NaturalLipSyncConfig>` | Tune merging — [Natural lip sync](/libraries/natural-lip-sync) |
+| `desktopTransitionSpeed` / `mobileTransitionSpeed` | `number` | Mouth blend rate |
+| `setSpeakingState` | `boolean` | Auto-drive `is_speaking` (default on) |
+| `manualSpeakingStateControl` | `boolean` | Take manual control of `is_speaking` |
+
+<Warning>
+Pass a **stable** `naturalLipSyncConfig` reference (a module constant or
+`useState`/`useMemo`). A fresh object literal every render reinitializes
+playback and breaks lip sync after the first chunk —
+[Troubleshooting](/libraries/react-troubleshooting).
+</Warning>
+
+### `useLipsyncStream(args)`
+
+```ts
+const { error, attached, pushAudio, pushBase64PCM16, reset } = useLipsyncStream({
+  client,
+  playback,
+  source: { kind: "mic" }, // | { kind: "mediaStream", stream } | { kind: "manual" }
+  enabled: isLive,
+  onFrame: (f) => {},      // optional per-window telemetry
+});
+```
+
+The unified audio→viseme stream for live audio: microphone, a tapped
+`MediaStream` (realtime providers, played audio), or manual chunk pushing.
+Full guide: [Streaming & microphone](/libraries/streaming-and-mic).
+
+### Low-level Rive loaders
+
+| Hook | Returns | Use when |
+|---|---|---|
+| `useLoadRive(options?)` | `{ rive, isRiveLoaded, RiveComponent, setImageAsset }` | You need to load Rive yourself; pass an options object (`{ stateMachineName, ... }`). `<MascotClient>` uses this internally. |
+| `useRiveAsset(riveParams?, opts?)` | `RiveState & { setImageAsset }` | Lowest-level escape hatch: `useRive` + a runtime image-asset swapper. |
+| `useSafeStateMachineInput(rive, _, name, init?)` | input or `DEFAULT_SM_INPUT` | Single-input lookup with the `mascotStateMachine` / `InLesson` fallback shim. |
+| `useIsMobileDevice()` | `boolean` | Touch + UA + screen-size heuristic (e.g. to pick a transition speed). |
+
+## Next
+
+<Columns cols={3}>
+  <Card title="Streaming & mic" icon="microphone" href="/libraries/streaming-and-mic">
+    `useLipsyncStream` in depth.
+  </Card>
+  <Card title="Offline lip sync" icon="box-archive" href="/libraries/offline-lipsync">
+    `useProcessAudio` → persist → replay.
+  </Card>
+  <Card title="Rive co-existence" icon="puzzle-piece" href="/concepts/rive-coexistence">
+    Driving non-mouth inputs.
+  </Card>
+</Columns>

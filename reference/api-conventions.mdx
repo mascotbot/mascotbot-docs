@@ -1,0 +1,101 @@
+---
+title: "Mascotbot SDK API Conventions - Predictable, Hard-to-Misuse Design"
+sidebarTitle: "API conventions"
+description: "The rules the Mascotbot lipsync SDK follows so it stays predictable: events vs callbacks, options objects, honest async, the error taxonomy, format versioning, and module boundaries."
+icon: "ruler-combined"
+'og:title': 'Mascotbot SDK API Conventions | Mascot Bot'
+'og:description': 'Events vs callbacks, options objects, honest async, error taxonomy, serialized-format versioning, and module boundaries.'
+'og:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+'og:url': 'https://docs.mascot.bot/reference/api-conventions'
+'twitter:title': 'Mascotbot SDK API Conventions | Mascot Bot'
+'twitter:description': 'The design rules that keep the SDK predictable and hard to misuse.'
+'twitter:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+---
+
+The SDK surface follows a small set of rules so it stays predictable and hard
+to misuse. Knowing them makes the whole API guessable.
+
+## 1. Events vs. callbacks
+
+- **Lifecycle / multi-fire → an emitter.** `client.on("ready" | "refused" |
+  "error" | "refresh", fn)` returns an unsubscribe function. Use it for things
+  that happen repeatedly or that multiple listeners care about.
+- **One-shot wiring / per-item telemetry → an option callback.** e.g.
+  `useLipsyncStream({ onFrame })`. Use it to configure one thing at
+  construction.
+
+There is never a second mechanism for the same concern (no `onReady` prop when
+`client.on("ready")` exists).
+
+## 2. Options object, not positional
+
+New hooks and functions take a **single options object** — e.g.
+`useLoadRive({ stateMachineName, ... })`. No public function takes multiple
+positional arguments where an options object would do.
+
+## 3. Async is honest
+
+If a value is computed off-thread (worker, network), the method is `async`
+and stays `async` — `client.diagnostics()`, `session.pushWindow()`. Nothing
+hides a Promise behind a sync-looking API, so you always know where to
+`await`.
+
+```ts
+const d = await client.diagnostics();          // off-thread → async
+const frame = await session.pushWindow(window); // inference → async
+```
+
+## 4. Error taxonomy
+
+Five classes — `LipsyncError` (base) plus `License` / `Network` / `Engine` /
+`RefusedError` — mapped to failure **domains**. You branch on `.code`, not the
+subclass. A new failure that is not a new domain reuses `LipsyncError` with a
+new `.code` (e.g. `bad_timeline`) rather than adding a subclass per code.
+Every code is registered in [Error codes](/reference/error-codes).
+
+## 5. Serialized-format versioning
+
+Anything you can persist and feed back later carries an explicit `version` and
+a validating parser that rejects mismatches loudly. `VisemeTimeline` has
+`version: VISEME_TIMELINE_VERSION` plus `frameMs`, and `parseTimeline` throws
+`LipsyncError("bad_timeline", …)` on any incompatibility. The version is
+bumped on any breaking shape or semantics change; an old shape is never
+silently accepted. Always load persisted data through the validating parser,
+never `JSON.parse` alone. See
+[the timeline model](/concepts/visemes-and-timeline).
+
+## 6. Module boundaries
+
+Import the narrowest entry point for the job:
+
+| Entry | Contains | Excludes |
+|---|---|---|
+| `@mascotbot-sdk/lipsync-core` | Engine, `VisemeTimeline` + helpers, `createPCMStreamPlayer` | No Rive, no React |
+| `@mascotbot-sdk/lipsync-core/rive` | `MascotPlayback`, `getRiveInputs`, `hasRiveInput` | No React; `@rive-app/webgl2` is an optional peer |
+| `@mascotbot-sdk/lipsync-react` | `LipsyncProvider`, `useLipsync`, `useProcessAudio` | No Rive |
+| `@mascotbot-sdk/lipsync-react/rive` | The React Rive layer | — |
+
+A Rive type never appears on the core root entry, and core never depends on
+React. The split keeps bundles minimal and the dependency graph honest.
+
+## 7. The SDK stays out of your Rive instance
+
+The SDK writes exactly three input families — mouth visemes, `is_speaking`,
+`stress` — and nothing else. Every other Rive capability is reached directly
+on the raw instance. This is a hard contract, documented in
+[Rive co-existence](/concepts/rive-coexistence): the SDK never wraps, gates,
+proxies, or constrains Rive.
+
+## Next
+
+<Columns cols={3}>
+  <Card title="Error codes" icon="triangle-exclamation" href="/reference/error-codes">
+    The full code matrix.
+  </Card>
+  <Card title="Rive co-existence" icon="puzzle-piece" href="/concepts/rive-coexistence">
+    The Rive ownership contract.
+  </Card>
+  <Card title="Migration" icon="arrow-right-arrow-left" href="/reference/migration">
+    The 0.2.x symbol map.
+  </Card>
+</Columns>

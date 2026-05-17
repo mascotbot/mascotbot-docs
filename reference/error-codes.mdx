@@ -1,0 +1,136 @@
+---
+title: "Mascotbot SDK Error Codes - License, Network & Timeline Failures"
+sidebarTitle: "Error codes"
+description: "Every Mascotbot lipsync SDK error code, the HTTP status it maps from, the customer-readable message, and the recommended UI. Branch on error.code, not the subclass."
+icon: "triangle-exclamation"
+'og:title': 'Mascotbot SDK Error Codes | Mascot Bot'
+'og:description': 'The full error-code matrix — license/auth refusals, network, engine, and the client-side bad_timeline — with recommended UI per code.'
+'og:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+'og:url': 'https://docs.mascot.bot/reference/error-codes'
+'twitter:title': 'Mascotbot SDK Error Codes | Mascot Bot'
+'twitter:description': 'The full error-code matrix with recommended UI per code.'
+'twitter:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+---
+
+Every authorization failure carries a semantic `code` and an actionable
+`message`. The SDK surfaces them as typed errors so your app can show the
+right next step ("re-subscribe", "update card", "use a dev key") instead of a
+flat 401.
+
+## The taxonomy
+
+Five classes, mapped to failure **domains**:
+
+| Class | Domain |
+|---|---|
+| `LipsyncError` | Base. Also used directly for client-side codes (e.g. `bad_timeline`). |
+| `LicenseError` | Authorization at `init`. |
+| `RefusedError` | Hard refusal (init or refresh) — not retryable. |
+| `NetworkError` | Transport failure reaching the edge service. |
+| `EngineError` | Inference/runtime failure. |
+
+<Tip>
+**Branch on `error.code`, not the subclass.** Codes are stable; the class is
+just the domain bucket.
+</Tip>
+
+```tsx
+import { RefusedError, NetworkError, EngineError } from "@mascotbot-sdk/lipsync-react";
+
+function StatusUI() {
+  const { status, error } = useLipsync();
+  if (status !== "error" && status !== "refused") return null;
+  if (error instanceof RefusedError) {
+    switch (error.code) {
+      case "key_disabled":
+      case "subscription_canceled":          return <ReSubscribe />;
+      case "subscription_past_due_expired":  return <UpdateCard />;
+      case "key_expired":                    return <RotateKey />;
+      case "invalid_api_key":                return <CheckKey />;
+      case "prod_key_on_localhost":          return <UseDevKey />;
+      case "dev_key_on_public_domain":       return <UseProdKey />;
+      case "origin_not_allowed":             return <CheckAllowlist />;
+      case "session_expired":                return <ReloadPrompt />;
+    }
+  }
+  if (error instanceof NetworkError) return <p>Network issue — retry</p>;
+  if (error instanceof EngineError)  return <p>Inference error — refresh</p>;
+  return <p>{error?.message}</p>;
+}
+```
+
+## Authorization codes
+
+The edge worker verifies the key and maps the rejection to one envelope.
+
+| HTTP | `code` | Fires when | Recommended UI |
+|---|---|---|---|
+| 401 | `missing_bearer` | No `Authorization` header. | Fix the integration (key not sent). |
+| 401 | `invalid_api_key` | Key not recognized — typo'd or never existed. | "Check the key at app.mascot.bot/api-keys." |
+| 401 | `key_expired` | Dev keys auto-expire 30 days after creation. | "Mint a fresh key." |
+| 402 | `key_disabled` | Key disabled — canonical canceled/revoked path. | "Re-subscribe, or mint a new key." |
+| 402 | `subscription_past_due_expired` | Payment failed and the grace period ran out. | "Update your card." |
+| 402 | `subscription_canceled` | Subscription canceled (identity preserved). | "Re-subscribe." |
+| 403 | `wrong_key_scope` | Key used on a surface it is not authorized for. | "Issue the matching key type." |
+| 403 | `prod_key_on_localhost` | Production key from `localhost`. | "Use a development key locally." |
+| 403 | `dev_key_on_public_domain` | Development key from a public origin. | "Use a production publishable key." |
+| 403 | `origin_not_allowed` | Production key + origin not on the allow-list. | "Add the origin at app.mascot.bot/security." |
+| 403 | `origin_allowlist_empty` | Production key with no origins configured. | "Configure the allow-list." |
+| 403 | `missing_origin` | Production key with no `Origin` header. | Fix the request. |
+| 429 | `rate_limited` | Key verification throttled. Transient. | "Try again in a few seconds." |
+| 404 | `session_expired` | The referenced session is gone (refresh only). **Hard refusal.** | "Reload the page to start a fresh session." |
+
+`session_expired` realistically happens when a tab is backgrounded long enough
+that throttled refresh ticks let the session lapse. It is never recoverable by
+retry — only a fresh init (a reload) recovers, so prompt the user immediately.
+
+## Client-side codes (no network)
+
+Some `LipsyncError`s are thrown entirely client-side and still carry
+`.code`:
+
+| Class | `code` | Fires when | Treat as |
+|---|---|---|---|
+| `LipsyncError` | `bad_timeline` | `parseTimeline(input)` rejected a persisted/untrusted timeline — version mismatch, non-positive `frameMs`, non-monotonic cue offsets, missing leading `t: 0`, out-of-range viseme id, or wrong field types. | "Regenerate via `client.processAudio()`" — **not** a license/network condition. |
+
+```ts
+import { parseTimeline, LipsyncError } from "@mascotbot-sdk/lipsync-core";
+
+try {
+  playback.setTimeline(parseTimeline(JSON.parse(stored)));
+} catch (err) {
+  if (err instanceof LipsyncError && err.code === "bad_timeline") {
+    // re-run processAudio() and re-persist
+  }
+}
+```
+
+See [Offline lip sync](/libraries/offline-lipsync) and
+[the timeline model](/concepts/visemes-and-timeline).
+
+## Wire format
+
+Every error response is JSON with `Content-Type: application/json`; the HTTP
+status is the envelope status:
+
+```json
+{ "code": "key_disabled", "message": "This API key has been disabled. …" }
+```
+
+The SDK parses this into the typed error's `.code` / `.message`. When a body
+is not JSON (5xx, network blip) the SDK synthesizes a status-derived envelope,
+so `.code` is always present.
+
+## Next
+
+<Columns cols={3}>
+  <Card title="Licensing & keys" icon="key" href="/concepts/licensing-and-keys">
+    Why these refusals happen.
+  </Card>
+  <Card title="API conventions" icon="ruler-combined" href="/reference/api-conventions">
+    Why the taxonomy is shaped this way.
+  </Card>
+  <Card title="Troubleshooting" icon="wrench" href="/libraries/react-troubleshooting">
+    Fixing them in practice.
+  </Card>
+</Columns>

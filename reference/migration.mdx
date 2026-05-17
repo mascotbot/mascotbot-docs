@@ -1,0 +1,168 @@
+---
+title: "Migrating to the 0.2.x Mascotbot Lipsync SDK"
+sidebarTitle: "Migration"
+description: "Move from the legacy Mascot Bot SDK (single @mascotbot-sdk/react package, proxy + viseme injection, useMascotSpeech) to the 0.2.x avatar SDK."
+icon: "arrow-right-arrow-left"
+'og:title': 'Migrating to the 0.2.x Mascotbot Lipsync SDK | Mascot Bot'
+'og:description': 'The architectural shift and the symbol-by-symbol map from the legacy hooks to 0.2.x.'
+'og:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+'og:url': 'https://docs.mascot.bot/reference/migration'
+'twitter:title': 'Migrating to the 0.2.x Mascotbot Lipsync SDK'
+'twitter:description': 'The architectural shift and the symbol-by-symbol legacy → 0.2.x map.'
+'twitter:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+---
+
+The 0.2.x SDK is a new architecture, not a renamed release. If you integrated
+a pre-0.2 build, read this before upgrading.
+
+## What changed, conceptually
+
+| Then (legacy) | Now (0.2.x) |
+|---|---|
+| One package `@mascotbot-sdk/react` | Two: `@mascotbot-sdk/lipsync-core` + `@mascotbot-sdk/lipsync-react`, each with a `/rive` subpath |
+| Visemes computed **server-side** and streamed to the client (REST `/v1/visemes`, SSE, a Mascot Bot WebSocket proxy, "viseme injection") | Visemes computed by the SDK on the client (WebAssembly). No proxy, no REST viseme API, no SSE viseme protocol |
+| Provider-specific hooks (`useMascotElevenlabs`, `useMascotLiveAPI`, `useMascotOpenAI`) and a TTS hook (`useMascotSpeech`) | One realtime contract: tap the assistant's audio into `useLipsyncStream({ source: { kind: "mediaStream", stream } })`. TTS server returns audio only; the SDK does the lip sync |
+| `getSignedUrl` proxy that injected visemes | Provider wired with its **own** official SDK; server mints only a short-lived provider credential |
+| `result.argmax` per-frame array | `result.timeline` — a serializable, versioned `VisemeTimeline` |
+| Private-registry `.tgz` install | Private npm registry `npm.mascot.bot` with an `.npmrc` token |
+
+The dedicated provider guides ([ElevenLabs](/libraries/elevenlabs-avatar),
+[Gemini Live](/libraries/gemini-live-api-avatar),
+[OpenAI Realtime](/libraries/openai-realtime-api-avatar)) and
+[Realtime overview](/realtime/overview) show the new wiring end to end.
+
+## Install
+
+Replace the local `.tgz` install with the registry:
+
+```ini .npmrc
+@mascotbot-sdk:registry=https://npm.mascot.bot/
+//npm.mascot.bot/:_authToken=mascot_xxx
+```
+
+```bash
+pnpm remove @mascotbot-sdk/react
+pnpm add @mascotbot-sdk/lipsync-react @rive-app/react-webgl2 @rive-app/webgl2
+```
+
+Then wrap the app in `<LipsyncProvider apiKey="mascot_…">` (sibling to
+`<MascotProvider>`). Full setup: [Installation](/installation).
+
+## Symbol map
+
+| Legacy | 0.2.x replacement |
+|---|---|
+| `@mascotbot-sdk/react` | `@mascotbot-sdk/lipsync-react` + `@mascotbot-sdk/lipsync-react/rive` |
+| `useMascot()` | `useMascotRive()` + `useMascotInputs()` (split the grab-bag — `rive`/render from the first, `custom`/`has`/`riveInputs` from the second) |
+| `useMascotClient()` | `useMascotRive()` + `useMascotInputs()` |
+| `useRiveInputs()` | `useMascotInputs()` |
+| `useMascotSpeech()` | Server route returns audio → `createPCMStreamPlayer` + `useLipsyncStream`. See [Realtime overview](/realtime/overview) |
+| `useMascotElevenlabs()` | [ElevenLabs guide](/libraries/elevenlabs-avatar) — own SDK + audio tap |
+| `useMascotLiveAPI()` | [Gemini Live guide](/libraries/gemini-live-api-avatar) |
+| `useMascotOpenAI()` | [OpenAI Realtime guide](/libraries/openai-realtime-api-avatar) |
+| `gesture: true` ("stress gesture at utterance start", on `useMascotElevenlabs` / `useMascotLiveAPI` / `useMascotOpenAI`) | The built-in `stress` emphasis is `useMascotPlayback().stress([{ offset, stress }])` — the SDK animates the Rive `stress` input from cues you schedule. A separate custom `gesture` trigger input (if your .riv declares one) is consumer-fired via `useMascotInputs().custom.gesture.fire()`. See [Stress emphasis and gestures](/realtime/overview#stress-emphasis-and-gestures) |
+| `useMicLipsync()` | `useLipsyncStream({ source: { kind: "mic" } })` |
+| `useStreamingLipsync()` | `useLipsyncStream({ source: { kind: "manual" } })` |
+| `useMediaStreamLipsync()` | `useLipsyncStream({ source: { kind: "mediaStream", stream } })` |
+| `playback.add(visemes)` | `playback.pushVisemes(cues)` (streaming) or `playback.setTimeline(tl)` (offline) |
+| `loadPrefetchedData(...)` | Persist a `VisemeTimeline` JSON; replay via `parseTimeline` + `setTimeline`. See [Offline lip sync](/libraries/offline-lipsync) |
+| `result.argmax` | `result.timeline` (a `VisemeTimeline`) |
+| `rive.stateMachineInputs(...)` introspection for presence | `useMascotInputs().has(name)` / `hasRiveInput(rive, name)` |
+| Mascot Bot proxy / `get-signed-url` / `/v1/visemes` | None — the SDK computes visemes on the client; only license init/refresh hits the network |
+
+Some legacy hooks still exist in 0.2.x as **deprecated aliases**
+(`useMascotClient`, `useRiveInputs`, `useMicLipsync`, `useStreamingLipsync`,
+`useMediaStreamLipsync`) so a build keeps compiling during migration. They are
+removal-targeted — move to the replacement when convenient.
+
+## Deprecated-but-present (migrate when convenient)
+
+| Deprecated in 0.2.x | Use instead |
+|---|---|
+| `useMascotClient()` | `useMascotRive()` + `useMascotInputs()` |
+| `useRiveInputs()` | `useMascotInputs()` |
+| `useMicLipsync()` | `useLipsyncStream({ source: { kind: "mic" } })` |
+| `useStreamingLipsync()` | `useLipsyncStream({ source: { kind: "manual" } })` |
+| `useMediaStreamLipsync()` | `useLipsyncStream({ source: { kind: "mediaStream", stream } })` |
+| `playback.add()` | `playback.pushVisemes()` / `playback.setTimeline()` |
+| `result.argmax` | `result.timeline` |
+| `useLoadRive(name, params)` (positional) | `useLoadRive({ stateMachineName, ... })` |
+
+## Hooks are no longer reference-stable
+
+This is the single biggest 0.2.x migration footgun and it is not in the
+symbol map, because it is a behaviour change, not a symbol swap. Legacy `useMascot()` returned a **memoised, stable**
+object. `useMascotRive()` / `useMascotInputs()` return a **fresh object
+every render**. Two consequences bite hard:
+
+- Putting their return (`custom`, `has`, `riveInputs`, the whole
+  handle) in a `useEffect` / `useCallback` **dependency array** re-runs
+  it every render — e.g. a Rive event listener that re-binds ~60×/s.
+  Capture what you need in a `useRef` and depend only on the **stable
+  `rive` instance** (stable once loaded).
+- The SDK's own `useMascotPlayback` keys on the inputs handle, so it
+  **recreates its internal `MascotPlayback` on every `<MascotClient>`
+  render**. `useLipsyncStream` calls `play()` once on attach, so any
+  mid-call re-render of `<MascotClient>` swaps the *playing* instance
+  for a dead one → audio plays, visemes compute, **mouth frozen**. Keep
+  the `<MascotClient>` subtree referentially stable (memoise it; pass
+  churny state via context/refs, not props that re-render it) and mount
+  the lipsync hooks **unconditionally**, never behind a call-state gate.
+
+<Warning>
+  If you only port the symbols and skip this, the build compiles and the
+  avatar renders — then lip sync silently breaks the moment any
+  unrelated state changes during a call. The
+  [Troubleshooting guide](/libraries/react-troubleshooting) has the
+  copy-paste fixes (stable `naturalLipSyncConfig`, memoised subtree,
+  unconditional mount, full per-call teardown on a shared client).
+</Warning>
+
+## Migration steps
+
+<Steps>
+  <Step title="Swap the package + install path">
+    Registry `.npmrc`, remove `@mascotbot-sdk/react`, add the two new packages
+    + Rive peers.
+  </Step>
+  <Step title="Add LipsyncProvider">
+    Wrap the app; move your API key into it. Keep `<MascotProvider>` /
+    `<MascotClient>`.
+  </Step>
+  <Step title="Replace data hooks">
+    `useMascot*` → `useMascotRive` + `useMascotInputs`; `result.argmax` →
+    `result.timeline`; `playback.add` → `pushVisemes` / `setTimeline`.
+    Then apply the [reference-stability fixes](#hooks-are-no-longer-reference-stable):
+    ref-capture hook returns used in effect deps, keep the
+    `<MascotClient>` subtree memoised, mount lipsync hooks
+    unconditionally.
+  </Step>
+  <Step title="Rebuild realtime/TTS">
+    Drop the proxy. Wire the provider with its own SDK and tap its audio per
+    [Realtime overview](/realtime/overview); TTS routes return audio only.
+    Fully release the player/stream on **every** call-end path
+    (`stop()` + `close()` + null the stream state) — a lingering
+    pipeline on the shared client corrupts other widgets.
+  </Step>
+  <Step title="Verify">
+    Status reaches `ready`, the mouth animates, the console is clean, network
+    shows only license init/refresh — no `/v1/visemes`, no proxy. Then
+    test the **cross-widget** case (use one avatar/call, end it, use a
+    second on the same page) — the shared-client teardown leak only
+    shows up there.
+  </Step>
+</Steps>
+
+## Next
+
+<Columns cols={3}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    The 0.2.x happy path.
+  </Card>
+  <Card title="Realtime overview" icon="bolt" href="/realtime/overview">
+    The new provider wiring.
+  </Card>
+  <Card title="Troubleshooting" icon="wrench" href="/libraries/react-troubleshooting">
+    Post-migration issues.
+  </Card>
+</Columns>

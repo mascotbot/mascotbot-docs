@@ -115,3 +115,29 @@ A nostalgic-yet-modern floating robot with an expressive screen, merging retro c
   title="Cat Mascot Demo"
   allow="autoplay; encrypted-media; microphone; clipboard-write"
 ></iframe>
+
+---
+
+## Using a ready-made mascot
+
+Every mascot above ships as a Rive file with the artboard `Character` and the
+`mascotStateMachine` state machine the SDK expects — drop one into
+`<MascotClient src>` and it lip-syncs with no extra setup:
+
+```tsx
+import { LipsyncProvider } from "@mascotbot-sdk/lipsync-react";
+import { MascotProvider, MascotClient, MascotRive } from "@mascotbot-sdk/lipsync-react/rive";
+
+<LipsyncProvider apiKey="mascot_pub_…">
+  <MascotProvider>
+    <MascotClient src="/cat.riv">
+      <MascotRive />
+    </MascotClient>
+  </MascotProvider>
+</LipsyncProvider>
+```
+
+The SDK only animates the mouth, `is_speaking`, and `stress` — every other
+input on these files (gestures, expressions, scene state) stays yours to
+drive directly. New here? Start with the
+[Quickstart](/quickstart), then the [React SDK](/libraries/react-sdk).

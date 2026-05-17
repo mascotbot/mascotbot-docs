@@ -4,6 +4,23 @@ description: "Product updates, new features, and improvements"
 mode: "center"
 ---
 
+<Update label="2026-05-16" tags={["feature"]}>
+## SDK 0.2.3 — interactive avatar SDK, offline timelines, unified streaming
+
+The SDK is now two packages — `@mascotbot-sdk/lipsync-core` and `@mascotbot-sdk/lipsync-react` — a single composable surface for real-time interactive avatars. Continuously-updated models and assets are delivered from Mascotbot; you ship the avatar. The documentation has been rewritten end to end for the new surface.
+
+- **Real-time pipeline** — audio in, animated avatar out; one composable surface.
+- **Serializable offline timeline** — `processAudio()` returns a versioned `VisemeTimeline`. Persist it as JSON and replay later with zero reprocessing via `parseTimeline` + `setTimeline`.
+- **One streaming hook** — `useLipsyncStream` handles live audio with `source: mic | mediaStream | manual`.
+- **Realtime, your way** — wire OpenAI Realtime, Gemini Live, or ElevenLabs with their own SDKs and tap the audio; `createPCMStreamPlayer` plays raw-PCM providers and exposes the tap.
+- **Focused Rive surface** — `useMascotRive` + `useMascotInputs` (with `has()`); the SDK writes only mouth, `is_speaking`, and `stress` — everything else stays yours.
+- **Private registry install** — `npm.mascot.bot` with an `.npmrc` token; `mascot_dev_…` for localhost, `mascot_pub_…` for production.
+
+Upgrading an existing integration? The [migration guide](https://docs.mascot.bot/reference/migration) maps every change.
+
+[Read the docs →](https://docs.mascot.bot/overview)
+</Update>
+
 <Update label="2026-04-22" tags={["feature"]}>
 ## Ship your agent on your own domain
 
@@ -49,7 +66,7 @@ Mascotbot SDK `0.2.0` adds critical-viseme holds, a configurable critical set, a
 
 - `criticalVisemeMinDuration` holds u/o/r/l/f/v/p/b/m phonemes long enough to register, dropping any non-critical viseme that would interrupt the hold window.
 - `criticalVisemeIds` exposes the critical set — drop vowels, add sibilants, whatever fits your character. Exports `DEFAULT_CRITICAL_VISEME_IDS` for consumers to derive custom lists.
-- `desktopTransitionSpeed` / `mobileTransitionSpeed` replace the misleadingly-named `*Duration` fields (old names kept as deprecated aliases). Default bumped from `11` → `22` for snappier blends.
+- `desktopTransitionSpeed` / `mobileTransitionSpeed` set the mouth-blend rate; default bumped from `11` → `22` for snappier blends.
 - Config edits now flow through the active `MascotPlayback` in place; slider tweaks and preset changes don't tear down the stream.
 - Rive runtime bumped to `@rive-app/react-webgl2@4.28.1` / `@rive-app/webgl2@2.37.2` — latest upstream fixes and perf work on the WebGL2 renderer.
 - Perf tuning validated on [`/lipsync-test`](https://www.mascot.bot/lipsync-test): memoized side panels, ref-based viewport pan/zoom, identity short-circuit on per-chunk config sync, NoiseOverlay visibility gate.

@@ -1,0 +1,167 @@
+---
+title: "Offline Lip Sync - Generate, Persist & Replay Viseme Timelines"
+sidebarTitle: "Offline lip sync"
+description: "Run Mascotbot inference once, persist the VisemeTimeline as JSON, and replay it forever with zero reprocessing — ideal for prefetching, queues, and video export."
+icon: "box-archive"
+'og:title': 'Offline Lip Sync — Generate, Persist & Replay | Mascot Bot SDK'
+'og:description': 'Run inference once, store the timeline as JSON, replay with zero reprocessing. The pattern for prefetching, queued playback, and deterministic video export.'
+'og:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+'og:url': 'https://docs.mascot.bot/libraries/offline-lipsync'
+'twitter:title': 'Offline Lip Sync — Generate, Persist & Replay | Mascot Bot SDK'
+'twitter:description': 'Run inference once, store the timeline as JSON, replay with zero reprocessing.'
+'twitter:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+---
+
+The offline path is the SDK's most powerful pattern: **run inference once,
+persist the result as JSON, and replay it forever** without touching the
+model, the network, or a license refresh. It is the right tool for
+prefetching, queued playback, deterministic video export, and any case where
+the same audio is animated more than once.
+
+The artifact is the [`VisemeTimeline`](/concepts/visemes-and-timeline) — plain,
+versioned JSON.
+
+## Generate → persist → replay
+
+<Steps>
+  <Step title="Generate once">
+    Run `processAudio` (vanilla) or `useProcessAudio` (React). `result.timeline`
+    is the artifact.
+  </Step>
+  <Step title="Persist anywhere">
+    It is plain JSON — `localStorage`, your database, a CDN object, a file.
+  </Step>
+  <Step title="Replay with zero reprocessing">
+    `parseTimeline(JSON.parse(stored))` → `playback.setTimeline(...)` →
+    `playback.play()`. No inference, no streaming session, no network.
+  </Step>
+</Steps>
+
+### React
+
+```tsx
+"use client";
+import { useLipsync, useProcessAudio, parseTimeline } from "@mascotbot-sdk/lipsync-react";
+import { useMascotPlayback } from "@mascotbot-sdk/lipsync-react/rive";
+
+const KEY = "greeting.vtl";
+
+function Greeting() {
+  const { status } = useLipsync();
+  const cached = typeof window !== "undefined" && localStorage.getItem(KEY);
+  // Only run inference when there is no cached timeline.
+  const { result } = useProcessAudio(cached ? null : "/audio/greeting.wav");
+  const playback = useMascotPlayback({ enableNaturalLipSync: true });
+
+  function play() {
+    if (status !== "ready") return;
+    let timeline;
+    if (cached) {
+      timeline = parseTimeline(JSON.parse(cached)); // zero reprocessing
+    } else if (result) {
+      timeline = result.timeline;
+      localStorage.setItem(KEY, JSON.stringify(timeline)); // persist for next time
+    } else return;
+
+    new Audio("/audio/greeting.wav").play().catch(() => {});
+    playback.setTimeline(timeline);
+    playback.play();
+  }
+
+  return <button onClick={play} disabled={status !== "ready"}>Play</button>;
+}
+```
+
+### Vanilla
+
+```ts
+import { MascotLipsyncClient, parseTimeline } from "@mascotbot-sdk/lipsync-core";
+
+const client = await MascotLipsyncClient.init({ apiKey: "mascot_pub_…" });
+
+// 1. Generate once (16 kHz mono Float32 in [-1, 1])
+const { timeline } = await client.processAudio(audio16kMono);
+
+// 2. Persist
+localStorage.setItem("greeting.vtl", JSON.stringify(timeline));
+
+// 3. Later — replay, zero reprocessing
+const restored = parseTimeline(JSON.parse(localStorage.getItem("greeting.vtl")!));
+playback.setTimeline(restored);
+playback.play();
+```
+
+## Assembling a timeline yourself
+
+If you already have per-frame viseme ids (e.g. from your own batch job), build
+a timeline with the pure converters instead of running inference:
+
+```ts
+import { framesToTimeline, timelineToCues } from "@mascotbot-sdk/lipsync-core";
+
+const timeline = framesToTimeline(visemeIdsPer10ms, { speechMs });
+playback.setTimeline(timeline);
+// timelineToCues(timeline) → the { offset, visemeId }[] the engine consumes
+```
+
+## Prefetching & queues
+
+Because a timeline is detached from the model, you can compute many ahead of
+time and play them instantly later:
+
+- **Prefetch on idle** — generate timelines for likely-next utterances during
+  idle time; play from cache the moment they are needed (no inference latency
+  at play time).
+- **Queue playback** — store a list of `{ audioUrl, timeline }` pairs; for
+  each, start the audio and `playback.setTimeline(timeline)` in lockstep.
+- **Server-side precompute** — generate timelines in a build step or backend
+  job, ship the JSON with your assets, and the client never runs inference for
+  that content at all.
+
+`speechMs` rides inside the timeline, so cached replay never re-meters and
+never re-infers.
+
+## Deterministic video export
+
+For frame-accurate rendering (recording the avatar to video), a timeline gives
+you a fixed, inspectable script: the same JSON produces the same mouth frames
+every run. Drive `playback.seek(ms)` to a render clock instead of wall-clock
+playback, capture the canvas per frame, and mux against the original audio.
+Because there is no live inference in the loop, export is reproducible and as
+fast as your renderer.
+
+## Versioning & the trust boundary
+
+`parseTimeline` validates untrusted/persisted JSON and throws a `LipsyncError`
+with `.code === "bad_timeline"` on a version or shape mismatch — so a stale
+stored timeline fails loudly instead of animating garbage:
+
+```ts
+import { parseTimeline, LipsyncError } from "@mascotbot-sdk/lipsync-core";
+
+try {
+  playback.setTimeline(parseTimeline(JSON.parse(stored)));
+} catch (err) {
+  if (err instanceof LipsyncError && err.code === "bad_timeline") {
+    // regenerate via client.processAudio(); do not treat as license/network
+  }
+}
+```
+
+Always load persisted timelines through `parseTimeline`, never `JSON.parse`
+alone. `VISEME_TIMELINE_VERSION` bumps on breaking changes; old artifacts are
+rejected deterministically.
+
+## Next
+
+<Columns cols={3}>
+  <Card title="Visemes & the timeline" icon="waveform-lines" href="/concepts/visemes-and-timeline">
+    The timeline format in detail.
+  </Card>
+  <Card title="Core client" icon="cube" href="/core/client">
+    `processAudio` and helpers.
+  </Card>
+  <Card title="Error codes" icon="triangle-exclamation" href="/reference/error-codes">
+    `bad_timeline` and the rest.
+  </Card>
+</Columns>

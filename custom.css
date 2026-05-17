@@ -13,3 +13,43 @@
   background-color: rgba(255, 255, 255, 0.12);
   color: rgba(255, 255, 255, 0.85);
 }
+
+/* ── Sidebar brand-logo icons: match the Font Awesome icons exactly ──
+ *
+ * Mintlify paints FA/Lucide icons as a `mask-image` tinted by
+ * `background-color` (theme/state-aware Tailwind classes). It renders
+ * frontmatter file-path icons (our provider logos) as a plain `<img>`
+ * with `bg-transparent`, so a baked SVG fill can't follow theme/state.
+ *
+ * Measured FA sidebar-icon ink (the values we match):
+ *   resting  → dark rgb(111,111,111)  · light rgb(158,158,158)
+ *   hover    → unchanged (same as resting; only row text recolours)
+ *   active   → dark #fff              · light #000
+ * The active row is the only one carrying a `text-primary` class.
+ *
+ * All targets are pure grayscale, so a deterministic grayscale filter
+ * reproduces them to the exact rgb:  brightness(0) zeroes the source,
+ * invert(1) → white, brightness(k) → gray(round(255·k)).
+ *   k = 0.435 → rgb(111,111,111)   k = 0.620 → rgb(158,158,158)
+ *   white = invert(1)              black = brightness(0)
+ */
+a img[src$="/logo/openai.svg"],
+a img[src$="/logo/gemini.svg"],
+a img[src$="/logo/elevenlabs.svg"] {
+  filter: brightness(0) invert(1) brightness(0.620) !important; /* light · resting → rgb(158,158,158) */
+}
+.dark a img[src$="/logo/openai.svg"],
+.dark a img[src$="/logo/gemini.svg"],
+.dark a img[src$="/logo/elevenlabs.svg"] {
+  filter: brightness(0) invert(1) brightness(0.435) !important; /* dark · resting → rgb(111,111,111) */
+}
+a[class*="text-primary"] img[src$="/logo/openai.svg"],
+a[class*="text-primary"] img[src$="/logo/gemini.svg"],
+a[class*="text-primary"] img[src$="/logo/elevenlabs.svg"] {
+  filter: brightness(0) !important;                             /* light · active → #000 */
+}
+.dark a[class*="text-primary"] img[src$="/logo/openai.svg"],
+.dark a[class*="text-primary"] img[src$="/logo/gemini.svg"],
+.dark a[class*="text-primary"] img[src$="/logo/elevenlabs.svg"] {
+  filter: brightness(0) invert(1) !important;                   /* dark · active → #fff */
+}

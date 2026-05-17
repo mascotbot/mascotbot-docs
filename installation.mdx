@@ -1,0 +1,110 @@
+---
+title: "Install the Mascotbot Lipsync SDK - Private Registry & API Keys"
+sidebarTitle: "Installation"
+description: "Install @mascotbot-sdk/lipsync-react and lipsync-core from the private npm registry, configure your .npmrc auth token, and pick the right development or production API key."
+icon: "download"
+'og:title': 'Install the Mascotbot Lipsync SDK | Mascot Bot'
+'og:description': 'Configure the private npm registry, your .npmrc auth token, and dev vs production keys for the Mascotbot avatar SDK.'
+'og:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+'og:url': 'https://docs.mascot.bot/installation'
+'twitter:title': 'Install the Mascotbot Lipsync SDK'
+'twitter:description': 'Private registry setup, .npmrc auth, dev vs production API keys.'
+'twitter:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+---
+
+The SDK is published to `npm.mascot.bot`, a **private registry** — it is not
+on npmjs.com. You need a Mascotbot API key to install and to run.
+
+## 1. Get an API key
+
+Create a key at [app.mascot.bot/api-keys](https://app.mascot.bot/api-keys).
+Keys are prefixed by environment:
+
+| Prefix | Where it works | Metering |
+|---|---|---|
+| `mascot_dev_…` | `localhost`, `*.localhost`, `127.0.0.1`, private networks only | Development meters — no billing, tamper-tolerant |
+| `mascot_pub_…` | Your registered public domains | Production meters — tamper detection active |
+
+A `mascot_dev_…` key sent from a public origin is **rejected by design**, and
+a `mascot_pub_…` key from `localhost` is rejected too. Use the matching key
+for the environment. See [Licensing & keys](/concepts/licensing-and-keys) for
+the full model.
+
+## 2. Point npm at the private registry
+
+Add a `.npmrc` at the root of your project:
+
+```ini
+@mascotbot-sdk:registry=https://npm.mascot.bot/
+//npm.mascot.bot/:_authToken=mascot_xxx
+```
+
+<Warning>
+Never commit `.npmrc` with the auth token. Add it to `.gitignore` and inject
+the token from a CI secret / environment variable instead.
+</Warning>
+
+## 3. Install the package
+
+<CodeGroup>
+
+```bash React
+pnpm add @mascotbot-sdk/lipsync-react
+```
+
+```bash Vanilla / Node
+pnpm add @mascotbot-sdk/lipsync-core
+```
+
+```bash Rive avatar (peer deps)
+pnpm add @rive-app/react-webgl2 @rive-app/webgl2
+```
+
+</CodeGroup>
+
+`@rive-app/webgl2` (and `@rive-app/react-webgl2` for React) is an **optional
+peer dependency** of the `/rive` subpaths. Install it only if you render an
+avatar; the audio pipeline alone does not need it. `npm` and `yarn` work the
+same way once the registry line is in `.npmrc`.
+
+## 4. Configure the client
+
+Pass configuration to `<LipsyncProvider>` or `MascotLipsyncClient.init`:
+
+| Option | Type | Default | Notes |
+|---|---|---|---|
+| `apiKey` | `string` | required | `mascot_dev_…` (localhost) or `mascot_pub_…` (production) |
+| `userId` | `string` | random | Stable per-user id for MAU billing attribution |
+| `licenseEndpoint` | `string` | `https://license.mascot.bot` | Override only if Mascotbot points you elsewhere |
+| `devMode` | `boolean` | auto-detect | Forced on for `localhost`, `*.localhost`, `127.0.0.1`, private IPs. Skips the Origin allow-list and routes events to dev meters. |
+| `fingerprintHash` | `string` | hashed UA + hardware | Override to control session attribution |
+
+```tsx
+"use client";
+import { LipsyncProvider } from "@mascotbot-sdk/lipsync-react";
+
+export default function Layout({ children }: { children: React.ReactNode }) {
+  return <LipsyncProvider apiKey={process.env.NEXT_PUBLIC_MASCOT_KEY!}>{children}</LipsyncProvider>;
+}
+```
+
+Production publishable keys (`mascot_pub_…`) are safe in client bundles — they
+are scoped to your allow-listed origins. Keep standing third-party keys (TTS,
+OpenAI, ElevenLabs) on the server.
+
+## TypeScript
+
+All packages ship `.d.ts`. Public types are re-exported from each root entry
+point — you do not need to install `lipsync-core` separately just for types if
+you depend on `lipsync-react`.
+
+## Next
+
+<Columns cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    A working avatar in a few lines.
+  </Card>
+  <Card title="Licensing & keys" icon="key" href="/concepts/licensing-and-keys">
+    Dev vs production, session lifecycle, error codes.
+  </Card>
+</Columns>

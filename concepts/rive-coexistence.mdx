@@ -1,0 +1,105 @@
+---
+title: "Rive Co-existence - The SDK Does Not Own Your Rive Instance"
+sidebarTitle: "Rive co-existence"
+description: "The Mascotbot SDK writes only mouth visemes, is_speaking, and stress. Every other Rive input, ViewModel, event, and listener stays yours on the raw rive instance."
+icon: "puzzle-piece"
+'og:title': 'Rive Co-existence — The SDK Does Not Own Your Rive Instance | Mascot Bot'
+'og:description': 'The three-input contract: the SDK animates the mouth; you keep full, unmediated control of every other Rive capability.'
+'og:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+'og:url': 'https://docs.mascot.bot/concepts/rive-coexistence'
+'twitter:title': 'Rive Co-existence | Mascot Bot SDK'
+'twitter:description': 'The SDK animates the mouth; you keep full control of every other Rive capability.'
+'twitter:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+---
+
+## The contract
+
+<Note>
+The SDK writes exactly three input families: mouth visemes (`100..118`),
+`is_speaking`, and `stress`. Everything else on the Rive instance — other
+state-machine inputs, data binding / ViewModels, events, listeners — is
+owned by the consumer and accessed directly on the raw `rive` object. The
+SDK never wraps, gates, proxies, or constrains that. `rive` is always fully
+exposed.
+</Note>
+
+This is a hard design rule, not a guideline.
+
+## Why
+
+Avatars do far more than lip sync: gender / skin / outfit inputs, gesture
+triggers, click events, data-bound ViewModels, scene state. If the SDK owned
+the Rive instance, every one of those would have to be re-exposed through SDK
+API forever, and the SDK would become a bottleneck on the Rive runtime's own
+evolution. Keeping the SDK to a three-input writer keeps integration "bring
+your own Rive, we animate the mouth" — composable, and future-proof against
+Rive API changes.
+
+## Get the raw instance
+
+```tsx
+import { useMascotRive } from "@mascotbot-sdk/lipsync-react/rive";
+
+function Costume() {
+  const { rive } = useMascotRive(); // inside <MascotClient>
+  // rive is the unmodified @rive-app/* instance.
+  // Set any input, fire any trigger, attach EventType.RiveEvent listeners,
+  // bind a ViewModel — none of it involves the SDK.
+}
+```
+
+Framework-agnostic, the same is true of `getRiveInputs(rive)` from
+`@mascotbot-sdk/lipsync-core/rive` — it reads inputs off a Rive instance you
+constructed and own.
+
+## Presence checks — use `has()`, not raw introspection
+
+A missing input handle resolves to a silent no-op shim (`DEFAULT_SM_INPUT`) so
+the SDK's own mouth writes never throw on an artboard that lacks a viseme.
+That shim is **structurally identical** to a real input — you cannot tell them
+apart by inspection. To know whether an input actually exists, ask:
+
+```tsx
+import { useMascotInputs } from "@mascotbot-sdk/lipsync-react/rive";
+
+function Wave() {
+  const { has, custom } = useMascotInputs<"wave">();
+  if (has("wave")) custom.wave.fire(); // consumer-owned, SDK-untouched
+  return null;
+}
+```
+
+`has(name)` is the authoritative check. The framework-agnostic equivalents are
+`getRiveInputs(rive).has(name)` and `hasRiveInput(rive, name)` in
+`@mascotbot-sdk/lipsync-core/rive`. `custom` from `useMascotInputs` is **never
+`undefined`**, which removes the optional-chaining tax from consumer code.
+Drive the input itself however you like — that part is entirely yours.
+
+## Rive file requirements
+
+| Element | Requirement |
+|---|---|
+| Artboard | `Character` |
+| State machine | `mascotStateMachine` (the SDK's input lookup also accepts the alternate `InLesson` name) |
+| Mouth inputs | Number inputs `100`–`118` (viseme ids) |
+| Optional | `is_speaking`, `eyes_smile`, `stress`, plus any consumer inputs (e.g. `gesture`) |
+
+Pass **only** `mascotStateMachine` in the `stateMachines` array to
+`new Rive(...)` (or rely on `STATE_MACHINE_NAMES[0]`). Rive 2.37+ throws on
+any unknown state-machine name in that array; the throw propagates through
+`initStateMachines`, fires `LoadError`, suppresses `Load`, and leaves the
+canvas blank.
+
+## Next
+
+<Columns cols={3}>
+  <Card title="React hooks" icon="react" href="/libraries/react-hooks">
+    `useMascotRive`, `useMascotInputs`.
+  </Card>
+  <Card title="React SDK" icon="cube" href="/libraries/react-sdk">
+    Provider and client components.
+  </Card>
+  <Card title="Migration" icon="arrow-right-arrow-left" href="/reference/migration">
+    The 0.2.x symbol map.
+  </Card>
+</Columns>

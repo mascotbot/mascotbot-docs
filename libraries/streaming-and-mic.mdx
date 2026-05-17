@@ -1,0 +1,180 @@
+---
+title: "Streaming & Microphone Lip Sync - useLipsyncStream Guide"
+sidebarTitle: "Streaming & microphone"
+description: "Drive a Mascotbot avatar from live audio with useLipsyncStream: microphone input, tapping a played MediaStream, or pushing audio manually. One hook, three sources."
+icon: "microphone"
+'og:title': 'Streaming & Microphone Lip Sync — useLipsyncStream | Mascot Bot SDK'
+'og:description': 'One hook for live lip sync: microphone, tapped MediaStream, or manual audio push. Telemetry, gating, and the built-in silence gate.'
+'og:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+'og:url': 'https://docs.mascot.bot/libraries/streaming-and-mic'
+'twitter:title': 'Streaming & Microphone Lip Sync — useLipsyncStream'
+'twitter:description': 'One hook for live lip sync: mic, tapped MediaStream, or manual audio push.'
+'twitter:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+---
+
+`useLipsyncStream` is the single hook for **live** lip sync. It owns the audio
+graph, runs inference per window, and feeds visemes into a `MascotPlayback`.
+One hook, three input sources.
+
+```ts
+import { useLipsyncStream } from "@mascotbot-sdk/lipsync-react/rive";
+
+const { error, attached, pushAudio, pushBase64PCM16, reset } = useLipsyncStream({
+  client,                       // from useLipsync()
+  playback,                     // from useMascotPlayback({ stream: true })
+  source: { kind: "mic" },      // see sources below
+  enabled: isLive,              // optional gate
+  onFrame: (f) => {},           // optional per-window telemetry
+  debug: false,                 // optional verbose logging
+});
+```
+
+Always create the playback with `stream: true` for live sources:
+
+```ts
+const playback = useMascotPlayback({ stream: true, enableNaturalLipSync: true });
+```
+
+## The three sources
+
+`source` is a discriminated union.
+
+### `{ kind: "mic" }`
+
+The user's microphone. Optional `constraints?: MediaTrackConstraints`.
+
+```tsx
+"use client";
+import { useEffect, useState } from "react";
+import { useLipsync } from "@mascotbot-sdk/lipsync-react";
+import { useMascotPlayback, useLipsyncStream } from "@mascotbot-sdk/lipsync-react/rive";
+
+function MicAvatar() {
+  const { client, status } = useLipsync();
+  const playback = useMascotPlayback({ stream: true, enableNaturalLipSync: true });
+  const [active, setActive] = useState(false);
+  const isLive = active && status === "ready" && !!client;
+
+  const { error } = useLipsyncStream({
+    client, playback,
+    source: { kind: "mic" },
+    enabled: isLive, // gates getUserMedia + the audio graph without unmounting
+  });
+
+  useEffect(() => { if (status !== "ready") setActive(false); }, [status]);
+
+  return (
+    <>
+      <button onClick={() => setActive((v) => !v)} disabled={status !== "ready"}>
+        {active ? "Stop mic" : "Start mic"}
+      </button>
+      {error && <p>{error.message}</p>}
+    </>
+  );
+}
+```
+
+The worklet outputs at zero gain, so the user's speakers do not echo the mic.
+
+### `{ kind: "mediaStream", stream }`
+
+Tap any `MediaStream` — a played `<audio>`/`<video>` element, or a realtime AI
+provider's voice. The capture point is the playback point, so the mouth
+cannot drift ahead of the speech. Pass `null` to detach.
+
+```tsx
+const audioRef = useRef<HTMLAudioElement>(null);
+const [stream, setStream] = useState<MediaStream | null>(null);
+
+function play() {
+  const el = audioRef.current as HTMLAudioElement & { captureStream?: () => MediaStream };
+  setStream(el.captureStream?.() ?? null);
+  el.play();
+}
+
+useLipsyncStream({ client, playback, source: { kind: "mediaStream", stream } });
+```
+
+This is the same tap used for self-playing realtime providers (ElevenLabs,
+OpenAI Realtime over WebRTC) — see [Realtime providers](/realtime/overview).
+
+### `{ kind: "manual" }`
+
+You push audio yourself with the returned functions — for providers that hand
+you raw PCM, or any custom source:
+
+```ts
+const { pushAudio, pushBase64PCM16, reset } = useLipsyncStream({
+  client, playback, source: { kind: "manual" },
+});
+
+await pushAudio(float32Samples, 24000);     // Float32 [-1,1] + its sample rate
+await pushBase64PCM16(base64Chunk, 24000);  // base64 PCM16 + its sample rate
+reset();                                     // drop buffered state (barge-in)
+```
+
+For raw-PCM realtime providers, pairing
+[`createPCMStreamPlayer`](/core/pcm-stream-player) with a
+`{ kind: "mediaStream" }` source is usually cleaner than manual pushing,
+because the player also handles gap-tolerant playback.
+
+## Return value
+
+| Field | Type | Notes |
+|---|---|---|
+| `error` | `Error \| null` | Stream/permission/inference error |
+| `attached` | `boolean` | The audio graph is live and tapping |
+| `pushAudio` | `(Float32Array, number) => Promise<void>` | Manual source only |
+| `pushBase64PCM16` | `(string, number) => Promise<void>` | Manual source only |
+| `reset` | `() => void` | Clears buffered stream state |
+
+## Telemetry with `onFrame`
+
+`onFrame` fires once per inference window with per-frame detail — wire it to a
+debug HUD or metrics, not to your render path:
+
+```ts
+useLipsyncStream({
+  client, playback, source: { kind: "mic" },
+  onFrame: (f) => {
+    // f.frameIndex, f.visemeId, f.silenceDetected, f.inferenceMs,
+    // f.emittedVisemeId, f.overruns, f.audioContextRate
+  },
+});
+```
+
+## Lifecycle and stability
+
+`useLipsyncStream` keeps the audio graph alive across re-renders by routing
+`client`/`playback` through refs. Only `enabled: false` (or a `null`
+`mediaStream`) tears it down — so you can flip a button without unmounting the
+component. Keep the `<MascotClient>` subtree from re-rendering on unrelated
+state to avoid recreating `MascotPlayback` mid-speech
+([Troubleshooting](/libraries/react-troubleshooting)).
+
+## End-of-utterance silence is handled for you
+
+When speech stops, naive pipelines emit phantom mouth shapes during the
+inference tail. The SDK suppresses this with an internal **−50 dBFS
+input-amplitude silence gate** — you do **not** implement your own gate. The
+mouth simply settles to rest when the audio goes quiet, on every source.
+
+## The audio worklet
+
+The worklet is embedded in the SDK and served from a Blob URL by default —
+there is no file to copy or host. Pass `workletUrl` only if your Content
+Security Policy forbids `worker-src blob:` or you want CDN caching.
+
+## Next
+
+<Columns cols={3}>
+  <Card title="Realtime providers" icon="bolt" href="/realtime/overview">
+    Tap OpenAI / Gemini / ElevenLabs voices.
+  </Card>
+  <Card title="PCM stream player" icon="waveform" href="/core/pcm-stream-player">
+    Play + tap raw provider PCM.
+  </Card>
+  <Card title="Hooks reference" icon="react" href="/libraries/react-hooks">
+    Every hook at a glance.
+  </Card>
+</Columns>

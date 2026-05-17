@@ -1,0 +1,112 @@
+---
+title: "Mascotbot Avatar SDK Overview - Build Interactive AI Avatars"
+sidebarTitle: "Overview"
+description: "What the Mascotbot avatar SDK is: real-time interactive AI avatars for React and JavaScript — offline, microphone, and realtime voice-agent paths."
+icon: "compass"
+'og:title': 'Mascotbot Avatar SDK Overview - Build Interactive AI Avatars | Mascot Bot'
+'og:description': 'A React/JavaScript SDK for real-time interactive AI avatars. Offline timelines, live microphone, and realtime AI voice-agent paths.'
+'og:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+'og:url': 'https://docs.mascot.bot/overview'
+'twitter:title': 'Mascotbot Avatar SDK — Build Interactive AI Avatars'
+'twitter:description': 'Real-time interactive AI avatars for React and JavaScript. Offline timelines, live mic, and realtime voice-agent paths.'
+'twitter:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+---
+
+The Mascotbot avatar SDK turns speech into a real-time talking avatar. It is a
+small, composable, low-level surface — **audio in → a serializable viseme
+timeline → a thin Rive playback layer** — backed by the licensed model and
+asset delivery. It does not ship a call UI, a TTS engine, or provider glue;
+those are recipes you compose, not framework you adopt.
+
+## How it works
+
+<Steps>
+  <Step title="Authorize">
+    `LipsyncProvider` (or `MascotLipsyncClient.init`) exchanges your API key
+    with the edge worker, which returns a short-lived license and the WASM
+    runtime. Sessions auto-refresh in the background.
+  </Step>
+  <Step title="Process speech">
+    You hand the SDK 16 kHz mono audio — a recorded buffer, microphone
+    windows, or a tapped `MediaStream`. The SDK produces a viseme id
+    per 10 ms frame.
+  </Step>
+  <Step title="Animate">
+    Visemes drive the mouth inputs of a Rive avatar through the playback
+    engine. The SDK writes only the mouth, `is_speaking`, and `stress` —
+    everything else on the Rive file stays yours.
+  </Step>
+</Steps>
+
+## Packages
+
+The SDK is two packages, each with a root and a `/rive` subpath. Import the
+narrowest one for your use case.
+
+| Import | What it is |
+|---|---|
+| `@mascotbot-sdk/lipsync-core` | Engine + offline `VisemeTimeline` + `createPCMStreamPlayer`. Framework-agnostic, no Rive, no React. |
+| `@mascotbot-sdk/lipsync-core/rive` | Framework-agnostic Rive playback (`MascotPlayback`, `getRiveInputs`, `hasRiveInput`). |
+| `@mascotbot-sdk/lipsync-react` | React provider + `useLipsync` / `useProcessAudio`. |
+| `@mascotbot-sdk/lipsync-react/rive` | React Rive layer: `<MascotClient>`, `useMascotRive`, `useMascotInputs`, `useMascotPlayback`, `useLipsyncStream`. |
+
+Most React apps use `@mascotbot-sdk/lipsync-react` + `@mascotbot-sdk/lipsync-react/rive`.
+The `/rive` subpaths take `@rive-app/webgl2` (and `@rive-app/react-webgl2` for
+React) as an **optional peer dependency** — install it only if you render an
+avatar.
+
+## Three integration paths
+
+<Columns cols={3}>
+  <Card title="Offline" icon="box-archive" href="/libraries/offline-lipsync">
+    Run inference once, persist the timeline as JSON, replay forever with
+    zero reprocessing.
+  </Card>
+  <Card title="Microphone & streaming" icon="microphone" href="/libraries/streaming-and-mic">
+    Drive the avatar live from the user's mic, a tapped `MediaStream`, or
+    manually pushed audio.
+  </Card>
+  <Card title="Realtime AI" icon="bolt" href="/realtime/overview">
+    Connect OpenAI Realtime, Gemini Live, or ElevenLabs by tapping the
+    assistant's voice in real time.
+  </Card>
+</Columns>
+
+All three end at the same place: a `MascotPlayback` instance driven by either
+a `VisemeTimeline` (offline) or a live audio source. There is no separate API
+to learn per path.
+
+## What the SDK does and does not do
+
+The SDK writes exactly three Rive input families: mouth visemes
+(`100..118`), `is_speaking`, and `stress`. Every other state-machine input,
+data-binding ViewModel, event, and listener on the Rive instance is yours,
+accessed directly on the raw `rive` object. The SDK never wraps, gates, or
+proxies it. This contract is detailed in
+[Rive co-existence](/concepts/rive-coexistence).
+
+The SDK is intentionally minimal — audio in, animation out. Upgrading an
+existing integration? The [migration guide](/reference/migration) maps every
+change.
+
+## Browser support
+
+- **Chrome / Edge** — full.
+- **Safari** (desktop 17+, iOS 17+) — full; WebAssembly + WebGL2 required for the Rive avatar.
+- **Firefox** — audio pipeline supported; the Rive renderer requires WebGL2.
+
+The SDK refuses to run if WebAssembly or `crypto.subtle` are unavailable.
+
+## Next
+
+<Columns cols={3}>
+  <Card title="Installation" icon="download" href="/installation">
+    Private registry, keys, peer deps.
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    A working avatar in a few lines.
+  </Card>
+  <Card title="Visemes & the timeline" icon="waveform-lines" href="/concepts/visemes-and-timeline">
+    The core data model.
+  </Card>
+</Columns>

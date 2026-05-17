@@ -27,66 +27,61 @@
           {
             "group": "Getting Started",
             "pages": [
-              "index"
+              "index",
+              "overview",
+              "installation",
+              "quickstart"
             ]
           },
           {
-            "group": "Libraries",
+            "group": "Core concepts",
             "pages": [
-              {
-                "group": "React",
-                "icon": "react",
-                "pages": [
-                  "libraries/react-sdk",
-                  "libraries/elevenlabs-avatar",
-                  "libraries/gemini-live-api-avatar",
-                  "libraries/openai-realtime-api-avatar",
-                  "libraries/natural-lip-sync",
-                  "libraries/prefetching-advanced-control",
-                  "libraries/react-troubleshooting"
-                ]
-              },
-              {
-                "group": "React Native",
-                "icon": "react",
-                "pages": [
-                  "libraries/react-native-sdk",
-                  "libraries/react-native-troubleshooting"
-                ]
-              }
+              "concepts/visemes-and-timeline",
+              "concepts/rive-coexistence",
+              "concepts/licensing-and-keys"
+            ]
+          },
+          {
+            "group": "React SDK",
+            "icon": "react",
+            "pages": [
+              "libraries/react-sdk",
+              "libraries/react-hooks",
+              "libraries/streaming-and-mic",
+              "libraries/offline-lipsync",
+              "libraries/natural-lip-sync"
+            ]
+          },
+          {
+            "group": "Core SDK (vanilla)",
+            "pages": [
+              "core/client",
+              "core/streaming",
+              "core/pcm-stream-player"
+            ]
+          },
+          {
+            "group": "Realtime providers",
+            "pages": [
+              "realtime/overview",
+              "libraries/elevenlabs-avatar",
+              "libraries/gemini-live-api-avatar",
+              "libraries/openai-realtime-api-avatar"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "reference/error-codes",
+              "reference/api-conventions",
+              "reference/migration",
+              "libraries/react-troubleshooting"
             ]
           },
           {
             "group": "Ready-made Mascots",
             "pages": [
               "mascots/ready-to-use-mascots"
-            ]
-          }
-        ]
-      },
-      {
-        "dropdown": "API Reference",
-        "description": "Complete API documentation",
-        "icon": "terminal",
-        "groups": [
-          {
-            "group": "API Documentation",
-            "pages": [
-              "api-reference/introduction"
-            ]
-          },
-          {
-            "group": "Endpoints",
-            "pages": [
-              "api-reference/endpoint/post",
-              "api-reference/endpoint/visemes-audio",
-              "api-reference/endpoint/get-signed-url"
-            ]
-          },
-          {
-            "group": "Integration Examples",
-            "pages": [
-              "api-reference/lipsync-integration"
             ]
           }
         ]
@@ -115,9 +110,22 @@
       ]
     }
   },
+  "redirects": [
+    { "source": "/libraries/react-native-sdk", "destination": "/overview" },
+    { "source": "/libraries/react-native-troubleshooting", "destination": "/libraries/react-troubleshooting" },
+    { "source": "/api-reference", "destination": "/overview" },
+    { "source": "/api-reference/introduction", "destination": "/overview" },
+    { "source": "/api-reference/endpoint/post", "destination": "/core/client" },
+    { "source": "/api-reference/endpoint/visemes-audio", "destination": "/core/client" },
+    { "source": "/api-reference/endpoint/get-signed-url", "destination": "/realtime/overview" },
+    { "source": "/api-reference/endpoint/gemini-live-api", "destination": "/realtime/overview" },
+    { "source": "/api-reference/lipsync-integration", "destination": "/realtime/overview" },
+    { "source": "/libraries/prefetching-advanced-control", "destination": "/libraries/offline-lipsync" },
+    { "source": "/libraries/ephemeral-token-security-model", "destination": "/concepts/licensing-and-keys" }
+  ],
   "logo": {
-    "light": "logo/mascotbot_logo_dark.svg",
-    "dark": "logo/mascotbot_logo_light.svg",
+    "light": "/logo/mascotbot_logo_dark.svg",
+    "dark": "/logo/mascotbot_logo_light.svg",
     "href": "https://mascot.bot"
   },
   "navbar": {
@@ -138,10 +146,6 @@
       "x": "https://x.com/mascot_bots"
     }
   },
-  "api": {
-    "openapi": "api-reference/openapi.yaml"
-  },
-  "asyncapi": "api-reference/asyncapi.yaml",
   "seo": {
     "indexing": "all",
     "metatags": {

@@ -1,0 +1,113 @@
+---
+title: "Streaming Lip Sync Sessions - createStreamingSession & pushWindow"
+sidebarTitle: "Streaming sessions"
+description: "Drive lip sync from live audio with the vanilla createStreamingSession API: push 25 ms windows, read per-frame results, handle silence, and barge-in."
+icon: "tower-broadcast"
+'og:title': 'Streaming Lip Sync Sessions — createStreamingSession | Mascot Bot SDK'
+'og:description': 'The low-level streaming API: push 25 ms windows, read per-frame viseme results, handle silence and interruption.'
+'og:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+'og:url': 'https://docs.mascot.bot/core/streaming'
+'twitter:title': 'Streaming Lip Sync Sessions — createStreamingSession'
+'twitter:description': 'Push 25 ms windows, read per-frame viseme results, handle silence and barge-in.'
+'twitter:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+---
+
+`createStreamingSession()` is the low-level streaming primitive on
+`MascotLipsyncClient`. You feed it fixed-size audio windows and it returns one
+viseme result per window. Most React apps should use
+[`useLipsyncStream`](/libraries/streaming-and-mic) instead — it owns the audio
+graph for you. Reach for the raw session when you control the audio source
+yourself (a custom worklet, a Node pipeline, a non-React app).
+
+## The window contract
+
+```ts
+const session = client.createStreamingSession();
+
+// audioWindow: 16 kHz mono Float32 in [-1, 1], 400 samples (25 ms)
+const frame = await session.pushWindow(audioWindow);
+
+session.close();
+```
+
+| Rule | Detail |
+|---|---|
+| Sample rate | 16 kHz mono. Use `client.resample(buf, fromRate, 16000)` upstream. |
+| Window size | 400 samples — exactly 25 ms. |
+| Cadence | One window at a time, in order. `pushWindow` is async — `await` each. |
+| Cleanup | `session.close()` when the utterance/stream ends. |
+
+`pushWindow` resolves to a `LipsyncStreamingFrameResult`:
+
+```ts
+interface LipsyncStreamingFrameResult {
+  visemeId: number;        // viseme id for this window
+  silenceDetected: boolean; // input was below the silence floor
+  frameIndex: number;       // monotonically increasing window counter
+}
+```
+
+## Drive the avatar
+
+Append each result to a streaming `MascotPlayback`. `offset` is the
+audio-position in ms; the playback's animation-frame clock fires the viseme
+when its time arrives.
+
+```ts
+import { MascotPlayback, getRiveInputs } from "@mascotbot-sdk/lipsync-core/rive";
+
+const playback = new MascotPlayback({ riveInputs: getRiveInputs(rive), stream: true, enableNaturalLipSync: true });
+playback.play();
+
+let ms = 0;
+for await (const window of windows /* your 25 ms Float32 chunks */) {
+  const frame = await session.pushWindow(window);
+  if (!frame.silenceDetected) playback.pushVisemes([{ offset: ms, visemeId: frame.visemeId }]);
+  ms += 25;
+}
+session.close();
+```
+
+## Silence handling
+
+`silenceDetected` reflects the SDK's internal **−50 dBFS input-amplitude
+silence gate**. It suppresses the phantom mouth shapes a naive pipeline would
+emit during the inference tail after speech stops — you do not implement your
+own gate. Treat `silenceDetected: true` windows as "mouth at rest".
+
+## Barge-in and interruption
+
+To cut a response short (the user interrupts), stop feeding windows and reset
+playback:
+
+```ts
+playback.reset(); // clear queued cues; mouth returns to rest
+// open a fresh session for the next utterance if needed
+const next = client.createStreamingSession();
+```
+
+If your audio arrives as raw PCM from a network source, pair
+[`createPCMStreamPlayer`](/core/pcm-stream-player) (which plays it
+gap-tolerantly and exposes a `MediaStream`) with `useLipsyncStream` rather
+than hand-windowing — that handles buffering and the tap for you.
+
+## React equivalent
+
+`useLipsyncStream({ source: { kind: "manual" } })` wraps a streaming session
+and exposes `pushAudio` / `pushBase64PCM16` / `reset`, while keeping the audio
+graph stable across renders. Prefer it in React; use the raw session only when
+you need full control of the window loop.
+
+## Next
+
+<Columns cols={3}>
+  <Card title="Core client" icon="cube" href="/core/client">
+    `init`, `processAudio`, events.
+  </Card>
+  <Card title="PCM stream player" icon="waveform" href="/core/pcm-stream-player">
+    Play + tap raw PCM.
+  </Card>
+  <Card title="Streaming & mic (React)" icon="microphone" href="/libraries/streaming-and-mic">
+    The React wrapper.
+  </Card>
+</Columns>

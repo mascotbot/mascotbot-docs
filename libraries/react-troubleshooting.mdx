@@ -1,78 +1,237 @@
 ---
 title: "Mascotbot React SDK Troubleshooting"
 sidebarTitle: "Troubleshooting"
+icon: "wrench"
 ---
 
+# Troubleshooting
 
-### Module Resolution Issues in Next.js Pages Router
+Common integration issues with `@mascotbot-sdk/lipsync-react` 0.2.x and their
+fixes. If your symptom is a license refusal, match the `error.code` against
+the [error-code reference](/reference/error-codes) first.
 
-If you encounter errors like:
+## Install fails with 401 / 403 from npm.mascot.bot
 
-```bash
-SyntaxError: Named export 'X' not found. The requested module '@rive-app/react-canvas' is a CommonJS module...
+The private registry needs a valid token in `.npmrc`:
+
+```ini
+@mascotbot-sdk:registry=https://npm.mascot.bot/
+//npm.mascot.bot/:_authToken=mascot_xxx
 ```
 
-This occurs because Next.js Pages Router has stricter module resolution rules compared to App Router. To fix this:
+A `403 wrong_key_scope` means the token is the wrong kind for the registry —
+mint one at [app.mascot.bot/api-keys](https://app.mascot.bot/api-keys). Make
+sure the `.npmrc` is at the project root and the token has no trailing
+newline.
 
-1. Add `@mascotbot-sdk/react` to your `next.config.js`:
+## Status never reaches `ready`
+
+Read `status` and `error` from `useLipsync()`:
+
+- `status === "refused"` → an authorization problem. Branch on `error.code`
+  (`dev_key_on_public_domain`, `prod_key_on_localhost`, `origin_not_allowed`,
+  `key_disabled`, …) and show the matching fix. See
+  [Licensing & keys](/concepts/licensing-and-keys).
+- `status === "error"` with a `NetworkError` → the device cannot reach
+  `license.mascot.bot`. Check connectivity, ad blockers, and corporate
+  proxies.
+- Stuck on `initializing` with no error → WebAssembly or `crypto.subtle` is
+  unavailable (old browser, insecure context). The SDK requires a secure
+  context (HTTPS or `localhost`).
+
+## Blank canvas — the avatar never renders
+
+Almost always the Rive state machine name. Pass **only** `mascotStateMachine`
+(or `STATE_MACHINE_NAMES[0]`) to Rive. Rive 2.37+ throws on any unknown
+state-machine name in the array; the throw fires `LoadError`, suppresses
+`Load`, and leaves the canvas blank. Also verify the artboard is named
+`Character` and the file exposes mouth inputs `100`–`118`.
+
+## Lip sync breaks mid-conversation (parent re-renders)
+
+If the mouth freezes or stops partway through speech, an ancestor of
+`<MascotClient>` is re-rendering and recreating `MascotPlayback`, which kills
+the active animation-frame loop.
+
+Two fixes:
+
+1. **Pass a stable `naturalLipSyncConfig`.** A new object literal every render
+   reinitializes playback. Use a module constant or `useState`/`useMemo`:
+
+   ```tsx
+   // ❌ new object every render
+   useMascotPlayback({ enableNaturalLipSync: true, naturalLipSyncConfig: { minVisemeInterval: 60 } });
+
+   // ✅ stable reference
+   const CFG = { minVisemeInterval: 60, mergeWindow: 80 } as const; // module scope
+   useMascotPlayback({ enableNaturalLipSync: true, naturalLipSyncConfig: CFG });
+   ```
+
+2. **Isolate the `<MascotClient>` subtree from unrelated state.** Pass mutable
+   data via a ref and memoize the provider/client block so tool calls, polling,
+   or UI state elsewhere do not cascade into it:
+
+   ```tsx
+   const propsRef = useRef(props);
+   propsRef.current = props;
+
+   const widget = useMemo(() => (
+     <MascotProvider>
+       <MascotClient src="/mascot.riv">
+         <VoiceContent propsRef={propsRef} />
+       </MascotClient>
+     </MascotProvider>
+   ), []); // refs are stable — no re-renders reach the avatar
+   ```
+
+   `useLipsyncStream` itself routes `client`/`playback` through refs and stays
+   alive across re-renders — it is the playback recreation, not the stream
+   hook, that breaks things.
+
+3. **Mount the lipsync hooks unconditionally.** `useLipsync` /
+   `useMascotPlayback` / `useLipsyncStream` must sit at the top of an
+   always-rendered component — never behind a call-state gate or in a
+   conditionally-mounted child:
+
+   ```tsx
+   // ❌ remounts useMascotPlayback when the call connects → recreates
+   //    MascotPlayback after useLipsyncStream already called play()
+   {callState === "connected" && <Lipsync stream={stream} />}
+
+   // ✅ always mounted; the stream is null until the call starts and
+   //    useLipsyncStream no-ops on a null mediaStream
+   <Lipsync stream={stream /* MediaStream | null */} />
+   ```
+
+   A conditional mount is the most common cause of "audio plays, visemes
+   are computed (`onFrame` fires), but the mouth never moves" — the
+   computed cues are pushed to a freshly-recreated, non-playing
+   `MascotPlayback`.
+
+<Tip>
+  To tell *"audio isn't reaching the tap"* from *"visemes computed but
+  not displayed"*, pass `onFrame` to `useLipsyncStream` and log
+  `silenceDetected` / `emittedVisemeId`. Rising emitted IDs with a dead
+  mouth means a recreated/non-playing `MascotPlayback` (the causes
+  above), **not** an audio problem.
+</Tip>
+
+## Mouth flickers when speech stops
+
+This is handled by the SDK's internal **−50 dBFS silence gate** — do **not**
+add your own gate. If you still see phantom shapes at end of utterance, you
+are likely feeding a self-playing realtime provider through
+`createPCMStreamPlayer` (double audio / doubled inference). Tap the provider's
+own output instead — see [Realtime providers](/realtime/overview).
+
+## Both the SDK and the provider play audio (double voice)
+
+`createPCMStreamPlayer` is **only** for providers that hand you raw PCM and do
+not play it (Gemini Live, OpenAI Realtime over WebSocket). For self-playing
+providers (ElevenLabs, OpenAI Realtime over WebRTC), do not use the player —
+`captureStream()` their existing playback and feed that to
+`useLipsyncStream({ source: { kind: "mediaStream", stream } })`.
+
+## No audio in a realtime/TTS demo
+
+The `AudioContext` (and `createPCMStreamPlayer`) must be created inside the
+user-gesture handler, before any `await`. A context created in a post-fetch
+microtask starts suspended and cannot resume without another gesture. Create
+or `resume()` the player synchronously at the top of the click handler.
+
+## One widget's lip sync is fast/garbled *after another widget ran*
+
+Symptom: widget A (e.g. a Gemini call) works; you end it and start
+widget B (e.g. an ElevenLabs widget) on the same page, and B's mouth
+runs at ~2× / flickers. B alone, or B-then-A, is fine.
+
+The whole page shares **one `<LipsyncProvider>` → one
+`MascotLipsyncClient`**. `useLipsyncStream`'s `mediaStream` pipeline is
+keyed on the **stream's identity** and tears down (closes its
+`AudioContext` + worklet + streaming session) only when that stream
+*reference* changes. If, on call-end, you only `player.stop()` but keep
+the same `player.outputStream` in state, the pipeline never tears down —
+it lingers on the shared client. Widget B then opens a *second*
+inference pipeline on the same client and the two corrupt each other's
+pacing.
+
+Fully release the pipeline on **every** call-end path (`stop`,
+`onclose`, error), symmetric with however you created it:
+
+```tsx
+player.stop();
+player.close();          // releases the AudioContext, not just the queue
+playerRef.current = null;
+setVoiceStream(null);     // ← the key line: changes the stream identity
+                          //   so useLipsyncStream runs its teardown
+```
+
+`createPCMStreamPlayer().stop()` only drops queued audio (barge-in);
+`.close()` releases the context. Self-playing taps must likewise stop
+polling and `setStream(null)`. (Switching the avatar by unmounting the
+`<MascotClient>` subtree tears down implicitly — this bug only surfaces
+when a call *ends without unmounting*.)
+
+## Avatar customizations (gender, colors, outline) don't apply
+
+Symptom: you set `useMascotInputs().custom.gender.value = …` once (e.g.
+in a mount effect) and the avatar still shows defaults.
+
+Custom inputs are no-op shims until Rive has bound the real
+state-machine handles, which happens **asynchronously after load**. A
+single early write lands on a shim and is lost; the state machine then
+settles into its default pose and never re-evaluates.
+
+Consume **raw** `useMascotInputs()` (its `custom`/`has` are a fresh
+object every render — do **not** freeze them in a memo for this),
+gate the write on `has(...)`, and re-assert every render. The
+re-application is idempotent and load-bearing — a one-shot write is the
+bug:
+
+```tsx
+const { custom, has } = useMascotInputs();
+useEffect(() => {
+  if (!has("gender")) return;            // real input bound yet?
+  custom.gender.value = female ? 2 : 1;
+  custom.colourful.value = true;
+}); // no dep array → re-asserts until (and after) Rive binds
+```
+
+## Avatar is hidden behind a section background
+
+`<MascotRive>` renders a `position: relative` element with **no
+z-index**. A positioned background sibling (`z-5`, an absolute image,
+etc.) will paint over it. Wrap **only** `<MascotRive>` in a low positive
+z — never a wrapper that also contains your call controls, or that
+wrapper becomes a stacking context and traps the controls under a
+sibling gradient:
+
+```tsx
+<div className="relative h-full w-full z-[6]">
+  <MascotRive />
+</div>
+```
+
+## Next.js Pages Router: "Named export not found"
+
+Pages Router has stricter module resolution. Transpile the package:
 
 ```js
 /** @type {import("next").NextConfig} */
-const nextConfig = {
-  transpilePackages: ["@mascotbot-sdk/react"]
-}
-module.exports = nextConfig
+module.exports = { transpilePackages: ["@mascotbot-sdk/lipsync-react"] };
 ```
 
-2. If you're still seeing issues, try clearing your Next.js cache:
+Then clear the cache: `rm -rf .next`.
 
-```bash
-rm -rf .next
-```
+## CSP blocks the audio worklet
 
-### `MascotCall` Common Issues
+The worklet is served from a Blob URL by default. If your Content Security
+Policy forbids `worker-src blob:`, either allow it or host the worklet
+yourself and pass its URL via `workletUrl` on `useLipsyncStream`.
 
-#### Transport State Stuck on "Connecting"
+## Still stuck?
 
-If the call state remains in "connecting":
-- Check that your `apiUrl` is correct and accessible
-- Ensure your browser has microphone permissions
-- Check browser console for any WebRTC-related errors
-
-#### Audio Issues
-
-If you're experiencing audio problems:
-1. Check microphone permissions in your browser
-2. Verify that no other application is using the microphone
-3. Try refreshing the page to reset WebRTC connections
-
-#### Animation Not Playing
-
-If the Rive animation isn't working:
-1. Verify your Rive file URL is correct
-2. Check that artboard and animation names match your Rive file
-
-### Lip Sync Breaks Mid-Conversation (ElevenLabs)
-
-If the mouth gets stuck or lip sync stops working during a conversation, the cause is almost always **parent re-renders destroying `MascotPlayback`**.
-
-**What happens:** `useRiveInputs()` returns a new container object on every render. This is a dependency of the internal `useEffect` that creates `MascotPlayback`. Any state change that re-renders an ancestor of `MascotClient` — tool call side effects, polling, UI interactions — cascades through, recreating `MascotPlayback` and killing the active animation-frame loop mid-speech.
-
-**Fix:** Ensure your `MascotClient` tree doesn't re-render when tool calls fire. Two approaches:
-
-1. **Memoize the MascotClient subtree** — pass mutable data (items, callbacks) via a ref, and wrap the `<MascotProvider>` + `<MascotClient>` block in `useMemo(() => ..., [])`:
-
-```tsx
-const propsRef = useRef(props);
-propsRef.current = props;
-
-const widget = useMemo(() => (
-  <MascotProvider>
-    <MascotClient ...>
-      <VoiceContent propsRef={propsRef} />
-    </MascotClient>
-  </MascotProvider>
-), []); // refs are stable — no re-renders
-```
-
-2. **Dispatch to a context** instead of calling parent callbacks directly from tool handlers — this is the pattern used in the reference implementation, where tool results update a separate context rather than flowing back as props through the widget tree.
+Compare against the reference integration in
+[`apps/lipsync-demo`](/overview) (single file, no design-system deps), or
+email [support@mascot.bot](mailto:support@mascot.bot). See also the
+[migration guide](/reference/migration).

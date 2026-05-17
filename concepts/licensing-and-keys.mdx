@@ -1,0 +1,134 @@
+---
+title: "Licensing & API Keys - Mascotbot Lipsync SDK Session Model"
+sidebarTitle: "Licensing & keys"
+description: "How Mascotbot lipsync SDK licensing works: development vs production keys, origin enforcement, the init / background-refresh session lifecycle, usage metering, and the key security model."
+icon: "key"
+'og:title': 'Licensing & API Keys — Mascotbot Lipsync SDK | Mascot Bot'
+'og:description': 'Development vs production keys, origin enforcement, the session lifecycle, usage metering, and where keys are safe to expose.'
+'og:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+'og:url': 'https://docs.mascot.bot/concepts/licensing-and-keys'
+'twitter:title': 'Licensing & API Keys | Mascot Bot SDK'
+'twitter:description': 'Dev vs production keys, origin enforcement, session lifecycle, and the key security model.'
+'twitter:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+---
+
+Authentication uses a Mascotbot license key (`mascot_…`). Every session is
+authorized by the Mascotbot edge service, which also delivers the licensed
+model and the mascot / voice assets. Speech is processed by the SDK in the
+user's browser — it isn't sent to or stored on Mascotbot servers; only
+licensing, model/asset delivery, and usage metering use the network.
+
+## Key environments
+
+| Prefix | Valid origins | Metering | Tamper detection |
+|---|---|---|---|
+| `mascot_dev_…` | `localhost`, `*.localhost`, `127.0.0.1`, private networks only | Development meters — no billing | Tolerated — local probing will not poison your session |
+| `mascot_pub_…` | Your registered, allow-listed public domains | Production meters | Active |
+
+The pairing is enforced server-side and is intentionally strict:
+
+- A `mascot_dev_…` key from a public origin → rejected (`dev_key_on_public_domain`).
+- A `mascot_pub_…` key from `localhost` → rejected (`prod_key_on_localhost`).
+- A `mascot_pub_…` key from an origin not on its allow-list → rejected (`origin_not_allowed`).
+
+`devMode` is auto-detected for `localhost`, `*.localhost`, `127.0.0.1`, and
+private IPs; it skips the Origin allow-list and routes events to the dev
+meters. Get and manage keys at
+[app.mascot.bot/api-keys](https://app.mascot.bot/api-keys).
+
+## Session lifecycle
+
+<Steps>
+  <Step title="Init">
+    On mount, `LipsyncProvider` / `MascotLipsyncClient.init` posts your key to
+    the edge worker. On success the worker returns a short-lived license and
+    the WASM runtime; `status` moves `initializing → ready`.
+  </Step>
+  <Step title="Background refresh">
+    While the client is active, the session auto-refreshes ahead of expiry.
+    You do nothing — the `"refresh"` event fires on each successful cycle if
+    you want to observe it.
+  </Step>
+  <Step title="Release">
+    Call `client.stop()` (or unmount the provider) to release resources. A
+    backgrounded tab whose refresh ticks were throttled long enough can expire
+    its session; the next call throws `RefusedError` with code
+    `session_expired` and the user should reload.
+  </Step>
+</Steps>
+
+`status` is one of `idle`, `initializing`, `ready`, `running`, `degraded`,
+`refused`, `error`. Read it from `useLipsync()` (React) or `client.status`
+(vanilla), and gate audio work on `status === "ready"`.
+
+## Usage metering
+
+Usage is attributed to your account through one of two meters, depending on
+plan:
+
+- **Speech seconds** — the entry plan bills by processed speech time.
+  `processAudio()` and streaming sessions report `speechMs` (non-silent
+  milliseconds); a persisted [`VisemeTimeline`](/concepts/visemes-and-timeline)
+  carries `speechMs`, so replaying a stored timeline does not re-meter.
+- **Monthly active users (MAU)** — higher plans bill by MAU. Pass a stable
+  `userId` so each user attributes correctly across sessions and devices.
+
+```tsx
+<LipsyncProvider apiKey="mascot_pub_…" userId={authedUser?.id}>
+  {children}
+</LipsyncProvider>
+```
+
+Set `userId` regardless of plan — it keeps both metering and your usage
+analytics accurate.
+
+## What your plan includes
+
+The subscription is the avatar platform around the SDK — you ship the avatar,
+Mascotbot keeps it running and improving:
+
+- **Continuously-updated models** delivered to the SDK (no rebuild on your side).
+- **The mascot & voice asset library** — ready-made avatars, or bring your own
+  Rive ([Ready-made Mascots](/mascots/ready-to-use-mascots)).
+- **The commercial license** to ship those models and assets in your product.
+- **SDK + API access**, usage analytics, and support.
+
+Plans scale from a speech-seconds entry tier up to MAU-based tiers; current
+tiers and limits are at [mascot.bot pricing](https://mascot.bot/#pricing).
+
+## Key security model
+
+- **`mascot_pub_…` publishable keys are safe in the browser bundle.** They are
+  scoped to your allow-listed origins and to the runtime surface — a scraped
+  production key cannot be used from another origin and cannot publish
+  packages. This is why the key can live in `NEXT_PUBLIC_…` / client config.
+- **`.npmrc` registry tokens are not.** They grant install access to the
+  private registry — keep them out of version control and inject from a CI
+  secret.
+- **Standing third-party keys never touch the browser.** When you add a
+  realtime AI provider or TTS, your OpenAI / Gemini / ElevenLabs *standing*
+  key stays on the server; a route handler mints a short-lived client secret,
+  ephemeral token, or signed URL per session. See
+  [Realtime providers](/realtime/overview).
+
+## When authorization fails
+
+License failures surface as typed errors with an actionable `.code` and
+`.message` so you can route the user to the right fix (re-subscribe, update
+card, swap dev/prod key). Branch on `error.code`, not the subclass. The full
+HTTP-status → code matrix and recommended UI per code is in
+[Error codes](/reference/error-codes).
+
+## Next
+
+<Columns cols={3}>
+  <Card title="Installation" icon="download" href="/installation">
+    Registry + `.npmrc` setup.
+  </Card>
+  <Card title="Error codes" icon="triangle-exclamation" href="/reference/error-codes">
+    Every refusal code and its fix.
+  </Card>
+  <Card title="Realtime providers" icon="bolt" href="/realtime/overview">
+    Server-minted provider tokens.
+  </Card>
+</Columns>

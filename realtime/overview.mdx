@@ -1,0 +1,215 @@
+---
+title: "Realtime AI Voice Avatars - Lip Sync for OpenAI, Gemini & ElevenLabs"
+sidebarTitle: "Realtime overview"
+description: "Add a real-time avatar to any voice AI: tap the assistant's audio into useLipsyncStream. OpenAI Realtime, Gemini Live, ElevenLabs."
+icon: "bolt"
+'og:title': 'Realtime AI Voice Avatars — Lip Sync for OpenAI, Gemini & ElevenLabs | Mascot Bot'
+'og:description': 'The provider-agnostic recipe: obtain a MediaStream of the assistant voice, feed useLipsyncStream, the avatar speaks in real time. Works with OpenAI Realtime, Gemini Live, and ElevenLabs.'
+'og:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+'og:url': 'https://docs.mascot.bot/realtime/overview'
+'twitter:title': 'Realtime AI Voice Avatars — OpenAI, Gemini, ElevenLabs'
+'twitter:description': 'Tap the assistant audio into useLipsyncStream; the avatar speaks in real time.'
+'twitter:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+---
+
+Adding a lip-synced avatar to a realtime voice assistant is one idea:
+
+> Give the SDK a `MediaStream` of the assistant's voice. It turns that
+> audio into a talking avatar in real time.
+
+```ts
+useLipsyncStream({ client, playback, source: { kind: "mediaStream", stream } });
+```
+
+You wire the provider with *its own* official SDK and the SDK lip-syncs the
+audio in real time. The only question is how you obtain that `MediaStream`,
+which depends on whether the provider plays the audio for you.
+
+## Pick the path by provider
+
+| Provider / transport | Plays audio itself? | How you get the stream | SDK piece |
+|---|---|---|---|
+| **OpenAI Realtime — WebRTC** | Yes (into an `<audio>` you supply) | `audioEl.captureStream()` | none |
+| **Gemini Live** | No (raw base64 PCM16 @ 24 kHz) | `createPCMStreamPlayer().outputStream` | [PCM player](/core/pcm-stream-player) |
+| **OpenAI Realtime — WebSocket** | No (raw PCM16 `ArrayBuffer`) | `createPCMStreamPlayer().outputStream` | [PCM player](/core/pcm-stream-player) |
+| **ElevenLabs Conversational AI** | Yes (internal worklet → `<audio>`) | `captureStream()` the element it creates | none |
+
+<Warning>
+Never route a self-playing provider (ElevenLabs, OpenAI-WebRTC) through
+`createPCMStreamPlayer` — the voice would play twice. The player is **only**
+for providers that hand you raw PCM and do not play it.
+</Warning>
+
+## Provider tokens stay on the server
+
+Never ship a standing provider key to the browser. A server route mints a
+short-lived credential per session; the client connects with that. The
+[demo](/overview) ships reference route handlers for all three:
+
+| Provider | Server mints | Notes |
+|---|---|---|
+| OpenAI | `POST https://api.openai.com/v1/realtime/client_secrets` → `clientSecret` | model `gpt-realtime` |
+| Gemini | `@google/genai` `ai.authTokens.create(...)` → ephemeral `token.name` | model `models/gemini-3.1-flash-live-preview`, `apiVersion: "v1alpha"` |
+| ElevenLabs | `GET https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id=…` → `signedUrl` | `xi-api-key` header, server-side only |
+
+## Path 1 — OpenAI Realtime (WebRTC), cleanest
+
+The provider auto-plays into an `<audio>` element. Supply your own so you can
+tap it; no SDK audio piece needed.
+
+```ts
+import { RealtimeAgent, RealtimeSession } from "@openai/agents-realtime";
+
+const audioEl = new Audio();
+const session = new RealtimeSession(new RealtimeAgent({ name: "Assistant" }), { transport: "webrtc" });
+await session.connect({ apiKey: clientSecret, audioElement: audioEl }); // clientSecret from your server route
+
+const stream = audioEl.captureStream();
+useLipsyncStream({ client, playback, source: { kind: "mediaStream", stream } });
+```
+
+## Path 2 — Gemini Live / OpenAI Realtime (WebSocket)
+
+The provider streams raw PCM and does not play it.
+[`createPCMStreamPlayer`](/core/pcm-stream-player) plays it gap-tolerantly and
+exposes the same audio as a tappable `MediaStream`.
+
+```ts
+import { createPCMStreamPlayer } from "@mascotbot-sdk/lipsync-core";
+
+const player = createPCMStreamPlayer({ sampleRate: 24000 }); // both emit 24 kHz
+useLipsyncStream({ client, playback, source: { kind: "mediaStream", stream: player.outputStream } });
+
+// Gemini Live (@google/genai): modelTurn audio part
+session.onmessage = (m) => {
+  const b64 = m?.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
+  if (typeof b64 === "string") player.pushBase64PCM16(b64);
+  if (m?.serverContent?.interrupted) player.stop();
+};
+
+// OpenAI Realtime (WebSocket): PCM16 ArrayBuffer
+session.on("audio", (e) => player.pushPCM16(new Uint8Array(e.data)));
+session.on("audio_interrupted", () => player.stop());
+```
+
+The transport parsing above is provider glue and stays in your app — it must
+not enter the SDK. Only the play-and-tap primitive is shared.
+
+## Path 3 — ElevenLabs Conversational AI
+
+ElevenLabs plays audio internally and (at time of writing) exposes only
+frequency/volume data, not the output `MediaStream`. Until it exposes a
+stream, patch `window.Audio` to capture the element its `Output` constructs,
+then `captureStream()` it once the call produces audio. Leave playback with
+ElevenLabs — muting their gain still leaves the `<audio>` audible (double
+voice). This is a provider gap, not an SDK responsibility; when ElevenLabs
+exposes `getOutputStream()` this collapses to Path 1.
+
+## Server TTS
+
+For plain TTS, the server route returns **audio only** (base64 PCM16). The
+client plays it through `createPCMStreamPlayer` and the tap drives the mouth.
+The server only synthesizes speech; it never computes or streams visemes.
+
+## End-of-utterance silence
+
+The SDK's internal **−50 dBFS silence gate** suppresses the phantom mouth
+shapes that appear when the assistant stops talking. You do not implement your
+own gate — this is handled for every realtime path.
+
+## Stress emphasis and gestures
+
+`stress` and `gesture` add body to a talking avatar. There is no flag to
+"enable" them — you drive them, and each needs the matching input declared on
+the `.riv` (the [ready-made mascots](/mascots/ready-to-use-mascots) include
+`stress`). They work the same for every realtime provider; the natural
+trigger is **speech onset**, which `useLipsyncStream`'s `onFrame` gives you.
+
+### `stress` — built-in emphasis
+
+`stress` is one of the three input families the SDK drives (mouth,
+`is_speaking`, `stress`). `useMascotPlayback()` returns a **`stress()`**
+method: you push emphasis cues `{ offset, stress }` and the SDK eases the Rive
+`stress` input toward each target. `offset` is ms on the playback clock; cues
+are applied in order, and a cue whose `offset` has already passed is applied
+on the next frame — so **`offset: 0` means "apply now"**. That makes the
+realtime pattern trivial: raise stress while the assistant speaks, drop it
+when it stops.
+
+### `gesture` — your own one-shot trigger
+
+`gesture` is a consumer-owned input — the SDK never touches it. If your `.riv`
+declares one, fire it yourself with `useMascotInputs()`. `has("gesture")`
+confirms the input exists; `custom.gesture.fire?.()` triggers it (the
+optional-call form also tolerates a numeric `gesture` input).
+
+### Wiring both for ElevenLabs (or any provider)
+
+`playback` must be created with `stream: true` for realtime. This drives
+`stress` on the speech envelope and fires `gesture` once per utterance —
+identical for OpenAI / Gemini, only the `stream` source differs:
+
+```tsx
+import { useRef } from "react";
+import { useLipsync } from "@mascotbot-sdk/lipsync-react";
+import { useMascotPlayback, useMascotInputs, useLipsyncStream } from "@mascotbot-sdk/lipsync-react/rive";
+
+function AvatarReactions({ stream }: { stream: MediaStream | null }) {
+  const { client } = useLipsync();
+  const playback = useMascotPlayback({ stream: true, enableNaturalLipSync: true });
+  const { has, custom } = useMascotInputs();
+  const speaking = useRef(false);
+
+  useLipsyncStream({
+    client,
+    playback,
+    source: { kind: "mediaStream", stream }, // ElevenLabs captureStream(), or player.outputStream
+    onFrame: (f) => {
+      const isSpeech = !f.silenceDetected;
+      if (isSpeech && !speaking.current) {
+        speaking.current = true;
+        playback.stress([{ offset: 0, stress: 1 }]);          // emphasize while speaking
+        if (has("gesture")) custom.gesture.fire?.();           // one-shot reaction
+      } else if (!isSpeech && speaking.current) {
+        speaking.current = false;
+        playback.stress([{ offset: 0, stress: 0 }]);          // ease back to neutral
+      }
+    },
+  });
+  return null;
+}
+```
+
+For a single emphasis bump instead of a sustained one, push `stress: 1` then
+release after a hold: `setTimeout(() => playback.stress([{ offset: 0, stress: 0 }]), 350)`.
+For offline playback the same `playback.stress([...])` works with real
+timeline offsets (e.g. `{ offset: 0, stress: 1 }`, `{ offset: 400, stress: 0 }`).
+`reset()` clears scheduled stress with the rest of playback. The timeline JSON
+does not carry stress — you always schedule it separately. See
+[Rive co-existence](/concepts/rive-coexistence) for why `gesture` is yours and
+`stress` is SDK-driven.
+
+## Provider guides
+
+<Columns cols={3}>
+  <Card title="ElevenLabs avatar" icon="microphone-lines" href="/libraries/elevenlabs-avatar">
+    Conversational AI avatar.
+  </Card>
+  <Card title="Gemini Live avatar" icon="google" href="/libraries/gemini-live-api-avatar">
+    Gemini Live API avatar.
+  </Card>
+  <Card title="OpenAI Realtime avatar" icon="robot" href="/libraries/openai-realtime-api-avatar">
+    ChatGPT Realtime avatar.
+  </Card>
+</Columns>
+
+## Next
+
+<Columns cols={2}>
+  <Card title="PCM stream player" icon="waveform" href="/core/pcm-stream-player">
+    Play + tap raw PCM.
+  </Card>
+  <Card title="Streaming & mic" icon="microphone" href="/libraries/streaming-and-mic">
+    `useLipsyncStream` in depth.
+  </Card>
+</Columns>
