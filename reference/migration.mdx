@@ -90,32 +90,41 @@ removal-targeted — move to the replacement when convenient.
 
 ## Hooks are no longer reference-stable
 
-This is the single biggest 0.2.x migration footgun and it is not in the
-symbol map, because it is a behaviour change, not a symbol swap. Legacy `useMascot()` returned a **memoised, stable**
-object. `useMascotRive()` / `useMascotInputs()` return a **fresh object
-every render**. Two consequences bite hard:
+This is a 0.2.x behaviour change, not a symbol swap, so it is not in the
+symbol map. Legacy `useMascot()` returned a **memoised, stable** object;
+`useMascotRive()` / `useMascotInputs()` return a **fresh object every
+render**. One consequence still bites:
 
-- Putting their return (`custom`, `has`, `riveInputs`, the whole
-  handle) in a `useEffect` / `useCallback` **dependency array** re-runs
-  it every render — e.g. a Rive event listener that re-binds ~60×/s.
-  Capture what you need in a `useRef` and depend only on the **stable
-  `rive` instance** (stable once loaded).
-- The SDK's own `useMascotPlayback` keys on the inputs handle, so it
-  **recreates its internal `MascotPlayback` on every `<MascotClient>`
-  render**. `useLipsyncStream` calls `play()` once on attach, so any
-  mid-call re-render of `<MascotClient>` swaps the *playing* instance
-  for a dead one → audio plays, visemes compute, **mouth frozen**. Keep
-  the `<MascotClient>` subtree referentially stable (memoise it; pass
-  churny state via context/refs, not props that re-render it) and mount
-  the lipsync hooks **unconditionally**, never behind a call-state gate.
+- Putting their return (`custom`, `has`, the whole handle) in a
+  `useEffect` / `useCallback` **dependency array** re-runs it every
+  render — e.g. a Rive event listener that re-binds ~60×/s. Capture what
+  you need in a `useRef` and depend only on the **stable `rive`
+  instance** (stable once loaded). On **SDK 0.2.6+** `riveInputs`
+  identity is itself stable, but the wrapper object and `has` are still
+  fresh per render — so this rule still applies to them.
+
+**Fixed in SDK 0.2.6 — the mid-call freeze is no longer a footgun.**
+Before 0.2.6, `useMascotPlayback` recreated its internal `MascotPlayback`
+on every `<MascotClient>` render and `useLipsyncStream` called `play()`
+only once on attach, so any mid-call re-render swapped the *playing*
+instance for a dead one → audio plays, visemes compute, **mouth frozen**
+(no error). On 0.2.6+ the input handles are referentially stable so an
+innocuous re-render no longer recreates playback, and `play()` is carried
+across any legitimate recreate (avatar swap / late bind). Memoising the
+`<MascotClient>` subtree and mounting the lipsync hooks unconditionally
+are now **optional render hygiene**, not correctness requirements —
+upgrade rather than work around it.
 
 <Warning>
-  If you only port the symbols and skip this, the build compiles and the
-  avatar renders — then lip sync silently breaks the moment any
-  unrelated state changes during a call. The
-  [Troubleshooting guide](/libraries/react-troubleshooting) has the
-  copy-paste fixes (stable `naturalLipSyncConfig`, memoised subtree,
-  unconditional mount, full per-call teardown on a shared client).
+  Upgrade both packages to **0.2.6** (`pnpm add
+  @mascotbot-sdk/lipsync-core@0.2.6 @mascotbot-sdk/lipsync-react@0.2.6`,
+  then `pnpm store prune && pnpm install --force`). The one consumer
+  responsibility that remains real is **full per-call teardown on a
+  shared client** — `stop()` + `close()` + null the stream state on
+  every call-end path; see the
+  [Troubleshooting guide](/libraries/react-troubleshooting). That is a
+  separate issue from the re-render freeze and is **not** removed by the
+  version bump.
 </Warning>
 
 ## Migration steps
@@ -132,10 +141,11 @@ every render**. Two consequences bite hard:
   <Step title="Replace data hooks">
     `useMascot*` → `useMascotRive` + `useMascotInputs`; `result.argmax` →
     `result.timeline`; `playback.add` → `pushVisemes` / `setTimeline`.
-    Then apply the [reference-stability fixes](#hooks-are-no-longer-reference-stable):
-    ref-capture hook returns used in effect deps, keep the
-    `<MascotClient>` subtree memoised, mount lipsync hooks
-    unconditionally.
+    Then apply the [reference-stability rule](#hooks-are-no-longer-reference-stable):
+    ref-capture hook returns used in effect deps (still required). On
+    **0.2.6+** the subtree-memoise / unconditional-mount patterns are
+    optional render hygiene — the SDK no longer freezes on a parent
+    re-render.
   </Step>
   <Step title="Rebuild realtime/TTS">
     Drop the proxy. Wire the provider with its own SDK and tap its audio per

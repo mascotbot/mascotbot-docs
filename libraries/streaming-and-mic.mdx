@@ -160,8 +160,11 @@ useLipsyncStream({
 `useLipsyncStream` keeps the audio graph alive across re-renders by routing
 `client`/`playback` through refs. Only `enabled: false` (or a `null`
 `mediaStream`) tears it down — so you can flip a button without unmounting the
-component. Keep the `<MascotClient>` subtree from re-rendering on unrelated
-state to avoid recreating `MascotPlayback` mid-speech
+component. On **SDK 0.2.6+** the Rive input handles are referentially
+stable and playback is carried across any internal recreate, so an
+unrelated parent re-render no longer freezes the mouth — keeping the
+`<MascotClient>` subtree from re-rendering is now optional render hygiene,
+not a correctness requirement
 ([Troubleshooting](/libraries/react-troubleshooting)).
 
 ## End-of-utterance silence is handled for you
