@@ -129,8 +129,9 @@ own output instead — see [Realtime providers](/realtime/overview).
 `createPCMStreamPlayer` is **only** for providers that hand you raw PCM and do
 not play it (Gemini Live, OpenAI Realtime over WebSocket). For self-playing
 providers (ElevenLabs, OpenAI Realtime over WebRTC), do not use the player —
-`captureStream()` their existing playback and feed that to
-`useLipsyncStream({ source: { kind: "mediaStream", stream } })`.
+tap their existing playback with the cross-browser
+[`tapElement`](/realtime/overview#tap-a-playing-element) helper and feed that
+to `useLipsyncStream({ source: { kind: "mediaStream", stream } })`.
 
 ## No audio in a realtime/TTS demo
 

@@ -192,7 +192,8 @@ export function ElevenLabsAvatar() {
 
   const start = async () => {
     if (status !== "ready") return;
-    // Stash the <audio> ElevenLabs creates internally so we can captureStream() it.
+    // Capture the hidden <audio> ElevenLabs creates (its srcObject is a
+    // MediaStream of the worklet output we'll tap).
     const w = window as unknown as { Audio: typeof Audio; __el?: HTMLAudioElement };
     const OrigAudio = w.Audio;
     w.Audio = function (...args: unknown[]) {
@@ -207,10 +208,15 @@ export function ElevenLabsAvatar() {
 
     let tries = 0;
     const iv = window.setInterval(() => {
-      const el = w.__el as (HTMLAudioElement & { captureStream?: () => MediaStream }) | undefined;
-      const s = el?.captureStream?.();
-      if (s) { setStream(s); window.clearInterval(iv); }
-      else if (++tries > 100) window.clearInterval(iv);
+      const el = w.__el;
+      // tapElement(el): cross-browser Web-Audio tap (Safari has no
+      // captureStream). Helper at /realtime/overview#tap-a-playing-element
+      if (el && el.srcObject instanceof MediaStream) {
+        setStream(tapElement(el));
+        window.clearInterval(iv);
+      } else if (++tries > 100) {
+        window.clearInterval(iv);
+      }
     }, 100);
 
     teardownRef.current = () => {
@@ -337,7 +343,7 @@ No audio or viseme data is sent to or stored on Mascotbot servers.
 ### Avatar Not Moving?
 
 <Warning>
-Confirm `status === "ready"` from `useLipsync()`, that the captured `MediaStream` is non-null (the `window.Audio` patch must be installed **before** `Conversation.startSession`), and that the Rive file uses artboard `Character` + state machine `mascotStateMachine` with inputs `100`–`118`.
+Confirm `status === "ready"` from `useLipsync()`, that the tapped `MediaStream` is non-null (the `window.Audio` patch must be installed **before** `Conversation.startSession`, and `el.srcObject` must be a `MediaStream`), and that the Rive file uses artboard `Character` + state machine `mascotStateMachine` with inputs `100`–`118`.
 </Warning>
 
 ### Only the First Second of Speech Animates?
@@ -368,7 +374,7 @@ No. Keep your `Conversation` setup. You only add a `MediaStream` tap of the audi
 
 ### How Is the Lip Sync Synchronized?
 
-The audio is tapped at its playback point via `captureStream()`, so visemes are derived from exactly what the user hears — the mouth cannot run ahead of the voice.
+The audio is tapped at its playback point with a Web-Audio `MediaStreamDestination`, so visemes are derived from exactly what the user hears — the mouth cannot run ahead of the voice.
 
 ### Is Audio Sent to Mascot Bot?
 

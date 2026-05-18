@@ -87,16 +87,20 @@ const audioRef = useRef<HTMLAudioElement>(null);
 const [stream, setStream] = useState<MediaStream | null>(null);
 
 function play() {
-  const el = audioRef.current as HTMLAudioElement & { captureStream?: () => MediaStream };
-  setStream(el.captureStream?.() ?? null);
+  const el = audioRef.current;
+  if (!el) return;
+  setStream(tapElement(el)); // cross-browser Web-Audio tap
   el.play();
 }
 
 useLipsyncStream({ client, playback, source: { kind: "mediaStream", stream } });
 ```
 
-This is the same tap used for self-playing realtime providers (ElevenLabs,
-OpenAI Realtime over WebRTC) — see [Realtime providers](/realtime/overview).
+`tapElement` is the cross-browser Web-Audio tap defined in
+[Realtime providers → Tap a playing element](/realtime/overview#tap-a-playing-element)
+(use it instead of `captureStream()`, which Safari does not implement). The
+same tap drives self-playing realtime providers (ElevenLabs, OpenAI Realtime
+over WebRTC) — see [Realtime providers](/realtime/overview).
 
 ### `{ kind: "manual" }`
 

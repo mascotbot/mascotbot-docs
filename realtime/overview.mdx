@@ -29,16 +29,49 @@ which depends on whether the provider plays the audio for you.
 
 | Provider / transport | Plays audio itself? | How you get the stream | SDK piece |
 |---|---|---|---|
-| **OpenAI Realtime — WebRTC** | Yes (into an `<audio>` you supply) | `audioEl.captureStream()` | none |
+| **OpenAI Realtime — WebRTC** | Yes (into an `<audio>` you supply) | [`tapElement(audioEl)`](#tap-a-playing-element) | none |
 | **Gemini Live** | No (raw base64 PCM16 @ 24 kHz) | `createPCMStreamPlayer().outputStream` | [PCM player](/core/pcm-stream-player) |
 | **OpenAI Realtime — WebSocket** | No (raw PCM16 `ArrayBuffer`) | `createPCMStreamPlayer().outputStream` | [PCM player](/core/pcm-stream-player) |
-| **ElevenLabs Conversational AI** | Yes (internal worklet → `<audio>`) | `captureStream()` the element it creates | none |
+| **ElevenLabs Conversational AI** | Yes (internal worklet → `<audio>`) | [`tapElement(el)`](#tap-a-playing-element) | none |
 
 <Warning>
 Never route a self-playing provider (ElevenLabs, OpenAI-WebRTC) through
 `createPCMStreamPlayer` — the voice would play twice. The player is **only**
 for providers that hand you raw PCM and do not play it.
 </Warning>
+
+## Tap a playing element
+
+When a provider plays the audio itself (OpenAI WebRTC, ElevenLabs), you tap
+the element it plays through. Use this Web-Audio helper — it works in Chrome,
+Safari and Firefox (`HTMLMediaElement.captureStream()` is not implemented in
+Safari/WebKit, so do not use it):
+
+```ts
+function tapElement(el: HTMLMediaElement): MediaStream {
+  const ctx = new (window.AudioContext ||
+    (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+  const dest = ctx.createMediaStreamDestination();
+  if (el.srcObject instanceof MediaStream) {
+    // Element plays a MediaStream (e.g. ElevenLabs' worklet output via
+    // srcObject) — tap it; it is already audible, so do NOT also route
+    // to ctx.destination (that would double the voice).
+    ctx.createMediaStreamSource(el.srcObject).connect(dest);
+  } else {
+    // File/URL-backed element (e.g. an OpenAI WebRTC <audio>) — keep it
+    // audible AND tap.
+    const src = ctx.createMediaElementSource(el);
+    src.connect(ctx.destination);
+    src.connect(dest);
+  }
+  void ctx.resume(); // call from the click handler so it isn't suspended
+  return dest.stream;
+}
+```
+
+Create it inside the click that starts the call (so the `AudioContext` isn't
+born suspended). `createMediaElementSource` may be called at most once per
+element.
 
 ## Provider tokens stay on the server
 
@@ -64,7 +97,7 @@ const audioEl = new Audio();
 const session = new RealtimeSession(new RealtimeAgent({ name: "Assistant" }), { transport: "webrtc" });
 await session.connect({ apiKey: clientSecret, audioElement: audioEl }); // clientSecret from your server route
 
-const stream = audioEl.captureStream();
+const stream = tapElement(audioEl); // see "Tap a playing element" above
 useLipsyncStream({ client, playback, source: { kind: "mediaStream", stream } });
 ```
 
@@ -97,13 +130,34 @@ not enter the SDK. Only the play-and-tap primitive is shared.
 
 ## Path 3 — ElevenLabs Conversational AI
 
-ElevenLabs plays audio internally and (at time of writing) exposes only
-frequency/volume data, not the output `MediaStream`. Until it exposes a
-stream, patch `window.Audio` to capture the element its `Output` constructs,
-then `captureStream()` it once the call produces audio. Leave playback with
-ElevenLabs — muting their gain still leaves the `<audio>` audible (double
-voice). This is a provider gap, not an SDK responsibility; when ElevenLabs
-exposes `getOutputStream()` this collapses to Path 1.
+ElevenLabs plays its assistant audio through a hidden `<audio>` whose
+`srcObject` is a `MediaStream` (an internal worklet → `MediaStreamDestination`).
+Patch `window.Audio` **before** `Conversation.startSession` to capture that
+element, then hand it to [`tapElement`](#tap-a-playing-element) once its
+`srcObject` is set — the `srcObject` branch taps without re-outputting, so
+ElevenLabs' own playback is not doubled:
+
+```ts
+const w = window as unknown as { Audio: typeof Audio; __el?: HTMLAudioElement };
+const Orig = w.Audio;
+w.Audio = function (...a: unknown[]) {
+  const el = new Orig(...(a as []));
+  w.__el = el;
+  return el;
+} as unknown as typeof Audio;
+
+const { Conversation } = await import("@elevenlabs/client");
+await Conversation.startSession({ signedUrl });
+
+const iv = setInterval(() => {
+  const el = w.__el;
+  if (el?.srcObject instanceof MediaStream) {
+    clearInterval(iv);
+    w.Audio = Orig;
+    setStream(tapElement(el)); // → useLipsyncStream({ source: { kind: "mediaStream", stream } })
+  }
+}, 100);
+```
 
 ## Server TTS
 
@@ -163,7 +217,7 @@ function AvatarReactions({ stream }: { stream: MediaStream | null }) {
   useLipsyncStream({
     client,
     playback,
-    source: { kind: "mediaStream", stream }, // ElevenLabs captureStream(), or player.outputStream
+    source: { kind: "mediaStream", stream }, // tapElement(el) for ElevenLabs, or player.outputStream
     onFrame: (f) => {
       const isSpeech = !f.silenceDetected;
       if (isSpeech && !speaking.current) {

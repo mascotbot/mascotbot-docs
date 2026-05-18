@@ -51,7 +51,7 @@ A voice-only ChatGPT-style assistant is invisible. A **lip-synced avatar** gives
 
 OpenAI Realtime has two transports, and the integration differs only in how you obtain the assistant's audio as a `MediaStream`:
 
-- **WebRTC (recommended, cleanest).** The session plays the assistant audio into an `<audio>` element you supply; you `captureStream()` it. No extra SDK audio piece.
+- **WebRTC (recommended, cleanest).** The session plays the assistant audio into an `<audio>` element you supply; you tap it with the cross-browser [`tapElement`](/realtime/overview#tap-a-playing-element) helper. No extra SDK audio piece.
 - **WebSocket.** The session hands you raw PCM16 chunks and does not play them; [`createPCMStreamPlayer`](/core/pcm-stream-player) plays them and exposes the tap.
 
 Either way: the browser connects to OpenAI with an **ephemeral client secret** minted server-side, and the SDK infers visemes from the assistant audio in real time. No Mascot Bot endpoint sits in the path. See [Realtime overview](/realtime/overview).
@@ -76,7 +76,7 @@ Mint a short-lived `client_secret` server-side via `POST /v1/realtime/client_sec
 
 ### <Icon icon="rotate" iconType="solid" />&nbsp; WebRTC or WebSocket Streaming
 
-WebRTC self-plays (tap via `captureStream()`); WebSocket hands you PCM (play + tap via `createPCMStreamPlayer`). Both end at one `useLipsyncStream` call.
+WebRTC self-plays (tap via the [`tapElement`](/realtime/overview#tap-a-playing-element) Web-Audio helper); WebSocket hands you PCM (play + tap via `createPCMStreamPlayer`). Both end at one `useLipsyncStream` call.
 
 ### <Icon icon="masks-theater" iconType="solid" />&nbsp; Natural Lip Sync Processing
 
@@ -196,7 +196,9 @@ export function OpenAIAvatar() {
     const session = new RealtimeSession(agent, { transport: "webrtc" });
     await session.connect({ apiKey: clientSecret, audioElement: audioEl });
 
-    setStream(audioEl.captureStream());
+    // tapElement: cross-browser Web-Audio tap (Safari has no
+    // captureStream) — see /realtime/overview#tap-a-playing-element
+    setStream(tapElement(audioEl));
     teardownRef.current = () => void session.close();
   };
 
@@ -291,7 +293,7 @@ A reactive on-screen character; non-mouth animation is yours via raw Rive inputs
 
 ### Avatar Not Moving?
 
-Confirm `status === "ready"`, the tap stream is set (WebRTC: `audioEl.captureStream()`; WebSocket: `player.outputStream`), and the Rive file uses artboard `Character` + state machine `mascotStateMachine` with inputs `100`–`118`.
+Confirm `status === "ready"`, the tap stream is set (WebRTC: `tapElement(audioEl)`; WebSocket: `player.outputStream`), and the Rive file uses artboard `Character` + state machine `mascotStateMachine` with inputs `100`–`118`.
 
 ### Only First Second of Speech Animated?
 
