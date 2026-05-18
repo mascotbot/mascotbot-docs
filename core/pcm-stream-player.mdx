@@ -122,8 +122,8 @@ const player = createPCMStreamPlayer({
 Never route a **self-playing** provider through `createPCMStreamPlayer` — you
 would hear the voice twice (double audio). ElevenLabs Conversational AI and
 OpenAI Realtime over **WebRTC** play the audio themselves. For those, do not
-use the player: tap their existing playback with the cross-browser
-[`tapElement`](/realtime/overview#tap-a-playing-element) helper and feed that
+use the player: tap their existing playback with the SDK's cross-browser
+[`createElementTap()`](/realtime/overview#tap-a-playing-element) and feed that
 to `useLipsyncStream({ source: { kind: "mediaStream", stream } })`.
 </Warning>
 

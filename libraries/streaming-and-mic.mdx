@@ -83,23 +83,31 @@ provider's voice. The capture point is the playback point, so the mouth
 cannot drift ahead of the speech. Pass `null` to detach.
 
 ```tsx
+import { createElementTap, type ElementTap } from "@mascotbot-sdk/lipsync-react";
+
 const audioRef = useRef<HTMLAudioElement>(null);
+const tapRef = useRef<ElementTap | null>(null);
 const [stream, setStream] = useState<MediaStream | null>(null);
 
 function play() {
   const el = audioRef.current;
   if (!el) return;
-  setStream(tapElement(el)); // cross-browser Web-Audio tap
+  if (!tapRef.current) {            // create inside the click gesture
+    tapRef.current = createElementTap();
+    setStream(tapRef.current.stream);
+  }
+  tapRef.current.attach(el);        // idempotent
   el.play();
 }
 
 useLipsyncStream({ client, playback, source: { kind: "mediaStream", stream } });
 ```
 
-`tapElement` is the cross-browser Web-Audio tap defined in
+`createElementTap()` is an SDK export (`@mascotbot-sdk/lipsync-react`,
+re-exported from `lipsync-core`) — the cross-browser tap detailed in
 [Realtime providers → Tap a playing element](/realtime/overview#tap-a-playing-element)
-(use it instead of `captureStream()`, which Safari does not implement). The
-same tap drives self-playing realtime providers (ElevenLabs, OpenAI Realtime
+(it replaces `captureStream()`, which Safari does not implement). The same
+helper drives self-playing realtime providers (ElevenLabs, OpenAI Realtime
 over WebRTC) — see [Realtime providers](/realtime/overview).
 
 ### `{ kind: "manual" }`

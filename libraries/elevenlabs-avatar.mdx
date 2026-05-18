@@ -192,6 +192,10 @@ export function ElevenLabsAvatar() {
 
   const start = async () => {
     if (status !== "ready") return;
+    // createElementTap from "@mascotbot-sdk/lipsync-react" — create in
+    // this click gesture so its AudioContext isn't suspended (Safari).
+    const tap = createElementTap();
+    setStream(tap.stream);
     // Capture the hidden <audio> ElevenLabs creates (its srcObject is a
     // MediaStream of the worklet output we'll tap).
     const w = window as unknown as { Audio: typeof Audio; __el?: HTMLAudioElement };
@@ -209,10 +213,10 @@ export function ElevenLabsAvatar() {
     let tries = 0;
     const iv = window.setInterval(() => {
       const el = w.__el;
-      // tapElement(el): cross-browser Web-Audio tap (Safari has no
-      // captureStream). Helper at /realtime/overview#tap-a-playing-element
+      // tap.attach(el): cross-browser tap (Safari has no captureStream).
+      // See /realtime/overview#tap-a-playing-element
       if (el && el.srcObject instanceof MediaStream) {
-        setStream(tapElement(el));
+        tap.attach(el);
         window.clearInterval(iv);
       } else if (++tries > 100) {
         window.clearInterval(iv);
