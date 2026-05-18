@@ -49,71 +49,31 @@ state-machine name in the array; the throw fires `LoadError`, suppresses
 
 ## Lip sync breaks mid-conversation (parent re-renders)
 
-If the mouth freezes or stops partway through speech, an ancestor of
-`<MascotClient>` is re-rendering and recreating `MascotPlayback`, which kills
-the active animation-frame loop.
+**Fixed in SDK 0.2.6 — no consumer workaround needed.** Earlier versions
+froze the mouth when an ancestor of `<MascotClient>` re-rendered mid-call:
+the re-render recreated `MascotPlayback` and stranded the single `play()`
+the stream hook had already issued, so computed visemes were pushed into a
+non-playing engine (audio kept playing, mouth dead, no error). 0.2.6 makes
+the Rive input handles referentially stable and carries playback across any
+legitimate engine recreate, so ordinary parent re-renders no longer break
+playback. Upgrade both packages to `0.2.6`:
 
-Two fixes:
+```bash
+pnpm add @mascotbot-sdk/lipsync-core@0.2.6 @mascotbot-sdk/lipsync-react@0.2.6
+pnpm store prune && pnpm install --force   # pnpm caches tarballs by hash
+```
 
-1. **Pass a stable `naturalLipSyncConfig`.** A new object literal every render
-   reinitializes playback. Use a module constant or `useState`/`useMemo`:
-
-   ```tsx
-   // ❌ new object every render
-   useMascotPlayback({ enableNaturalLipSync: true, naturalLipSyncConfig: { minVisemeInterval: 60 } });
-
-   // ✅ stable reference
-   const CFG = { minVisemeInterval: 60, mergeWindow: 80 } as const; // module scope
-   useMascotPlayback({ enableNaturalLipSync: true, naturalLipSyncConfig: CFG });
-   ```
-
-2. **Isolate the `<MascotClient>` subtree from unrelated state.** Pass mutable
-   data via a ref and memoize the provider/client block so tool calls, polling,
-   or UI state elsewhere do not cascade into it:
-
-   ```tsx
-   const propsRef = useRef(props);
-   propsRef.current = props;
-
-   const widget = useMemo(() => (
-     <MascotProvider>
-       <MascotClient src="/mascot.riv">
-         <VoiceContent propsRef={propsRef} />
-       </MascotClient>
-     </MascotProvider>
-   ), []); // refs are stable — no re-renders reach the avatar
-   ```
-
-   `useLipsyncStream` itself routes `client`/`playback` through refs and stays
-   alive across re-renders — it is the playback recreation, not the stream
-   hook, that breaks things.
-
-3. **Mount the lipsync hooks unconditionally.** `useLipsync` /
-   `useMascotPlayback` / `useLipsyncStream` must sit at the top of an
-   always-rendered component — never behind a call-state gate or in a
-   conditionally-mounted child:
-
-   ```tsx
-   // ❌ remounts useMascotPlayback when the call connects → recreates
-   //    MascotPlayback after useLipsyncStream already called play()
-   {callState === "connected" && <Lipsync stream={stream} />}
-
-   // ✅ always mounted; the stream is null until the call starts and
-   //    useLipsyncStream no-ops on a null mediaStream
-   <Lipsync stream={stream /* MediaStream | null */} />
-   ```
-
-   A conditional mount is the most common cause of "audio plays, visemes
-   are computed (`onFrame` fires), but the mouth never moves" — the
-   computed cues are pushed to a freshly-recreated, non-playing
-   `MascotPlayback`.
+If you still see a frozen mouth on `0.2.6`, it is no longer this
+re-render class — pass a stable `naturalLipSyncConfig` (a new object
+literal every render still reinitializes the natural-lipsync processor),
+and confirm audio is actually reaching the tap:
 
 <Tip>
   To tell *"audio isn't reaching the tap"* from *"visemes computed but
   not displayed"*, pass `onFrame` to `useLipsyncStream` and log
   `silenceDetected` / `emittedVisemeId`. Rising emitted IDs with a dead
-  mouth means a recreated/non-playing `MascotPlayback` (the causes
-  above), **not** an audio problem.
+  mouth on `0.2.6` means an audio-graph issue (tap not attached / wrong
+  source), **not** playback recreation.
 </Tip>
 
 ## Mouth flickers when speech stops
