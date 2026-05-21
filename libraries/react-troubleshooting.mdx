@@ -100,6 +100,66 @@ user-gesture handler, before any `await`. A context created in a post-fetch
 microtask starts suspended and cannot resume without another gesture. Create
 or `resume()` the player synchronously at the top of the click handler.
 
+## ElevenLabs 2nd call has no lip sync (1st call worked)
+
+Symptom: an ElevenLabs widget animates the mouth on the very first
+call, you end it cleanly, then start a new call — voice plays, console
+is clean, but the mouth is frozen for the entire second call.
+
+You're using the `window.Audio` patch + `<audio>` poll pattern from
+[the ElevenLabs avatar guide](/libraries/elevenlabs-avatar) (the
+cross-browser approach for SDK 0.2.x). The class:
+
+- The patch stashes a reference to the `<audio>` element ElevenLabs
+  constructs (e.g. `w.__el = el`) so a 100 ms poll can `tap.attach()`
+  it once it's wired up.
+- On call-end, `endSession()` stops the conversation but the stashed
+  reference and the `srcObject` MediaStream both *remain* on `window`.
+  The MediaStream's audio tracks transition to `readyState: 'ended'`,
+  but `el.srcObject instanceof MediaStream` is still `true`.
+- On call #2, the poll runs almost immediately — typically *before*
+  ElevenLabs has called `new Audio()` again. The naive check
+  `el && el.srcObject instanceof MediaStream` accepts the stale
+  reference, `tap.attach()` lands on a silent corpse, and zero audio
+  reaches the new tap.
+
+Two corrections, both required (one defends against the other failing):
+
+```tsx
+// 1. Reject any candidate whose audio tracks are no longer 'live'.
+const isLive = (el: HTMLMediaElement | null | undefined) =>
+  !!el && el.srcObject instanceof MediaStream &&
+  el.srcObject.getAudioTracks().some((t) => t.readyState === "live");
+
+const iv = window.setInterval(() => {
+  const el = w.__el;
+  if (isLive(el)) {
+    tap.attach(el as HTMLMediaElement);
+    window.clearInterval(iv);
+  } else if (++tries > 100) {
+    window.clearInterval(iv);
+  }
+}, 100);
+
+// 2. In teardown, null the stash AND close the tap. Otherwise the
+//    next call's poll latches onto the stale ref before the next
+//    `new Audio()` lands, and every restart leaks a worklet graph.
+teardownRef.current = () => {
+  window.clearInterval(iv);
+  w.Audio = OrigAudio;
+  w.__el = null;          // ← without this, next call's first poll
+                          //   sees the still-set MediaStream and
+                          //   attaches to the dead element
+  tap.close();            // ← releases the tap's AudioContext + stream
+  void convo.endSession();
+};
+```
+
+The `isLive` check is the real defense — even if you forget the null
+in teardown, no element with `readyState !== 'live'` will ever be
+attached. The null-out is belt-and-suspenders that also avoids one
+wasteful poll iteration.
+
 ## One widget's lip sync is fast/garbled *after another widget ran*
 
 Symptom: widget A (e.g. a Gemini call) works; you end it and start

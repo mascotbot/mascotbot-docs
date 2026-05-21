@@ -198,7 +198,7 @@ export function ElevenLabsAvatar() {
     setStream(tap.stream);
     // Capture the hidden <audio> ElevenLabs creates (its srcObject is a
     // MediaStream of the worklet output we'll tap).
-    const w = window as unknown as { Audio: typeof Audio; __el?: HTMLAudioElement };
+    const w = window as unknown as { Audio: typeof Audio; __el?: HTMLAudioElement | null };
     const OrigAudio = w.Audio;
     w.Audio = function (...args: unknown[]) {
       const el = new OrigAudio(...(args as []));
@@ -210,13 +210,22 @@ export function ElevenLabsAvatar() {
     const { Conversation } = await import("@elevenlabs/client");
     const convo = await Conversation.startSession({ signedUrl });
 
+    // Live-tracks guard: on a 2nd "end → start" cycle, `w.__el` will
+    // briefly still point at the previous call's <audio> element (its
+    // srcObject is a MediaStream whose tracks are 'ended'). Attaching
+    // to it produces silence for the entire new call. Require at
+    // least one 'live' track before attaching.
+    const isLive = (el: HTMLMediaElement | null | undefined) =>
+      !!el && el.srcObject instanceof MediaStream &&
+      el.srcObject.getAudioTracks().some((t) => t.readyState === "live");
+
     let tries = 0;
     const iv = window.setInterval(() => {
       const el = w.__el;
       // tap.attach(el): cross-browser tap (Safari has no captureStream).
       // See /realtime/overview#tap-a-playing-element
-      if (el && el.srcObject instanceof MediaStream) {
-        tap.attach(el);
+      if (isLive(el)) {
+        tap.attach(el as HTMLMediaElement);
         window.clearInterval(iv);
       } else if (++tries > 100) {
         window.clearInterval(iv);
@@ -226,6 +235,12 @@ export function ElevenLabsAvatar() {
     teardownRef.current = () => {
       window.clearInterval(iv);
       w.Audio = OrigAudio;
+      // Null the stash so the *next* call's poll doesn't latch onto
+      // this (now-dead) element before EL has constructed its new one.
+      w.__el = null;
+      // Close the tap's AudioContext + MediaStream — otherwise each
+      // restart leaks a worklet graph.
+      tap.close();
       void convo.endSession();
     };
   };
