@@ -68,7 +68,7 @@ Then wrap the app in `<LipsyncProvider apiKey="mascot_…">` (sibling to
 | `loadPrefetchedData(...)` | Persist a `VisemeTimeline` JSON; replay via `parseTimeline` + `setTimeline`. See [Offline lip sync](/libraries/offline-lipsync) |
 | `result.argmax` | `result.timeline` (a `VisemeTimeline`) |
 | `rive.stateMachineInputs(...)` introspection for presence | `useMascotInputs().has(name)` / `hasRiveInput(rive, name)` |
-| Mascot Bot proxy / `get-signed-url` / `/v1/visemes` | None — the SDK computes visemes on the client; only license init/refresh hits the network |
+| Mascot Bot proxy / `get-signed-url` / `/v1/visemes` | Removed — hybrid architecture; license init + refresh against `license.mascot.bot`. |
 
 Some legacy hooks still exist in 0.2.x as **deprecated aliases**
 (`useMascotClient`, `useRiveInputs`, `useMicLipsync`, `useStreamingLipsync`,
