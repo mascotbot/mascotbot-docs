@@ -47,34 +47,24 @@ state-machine name in the array; the throw fires `LoadError`, suppresses
 `Load`, and leaves the canvas blank. Also verify the artboard is named
 `Character` and the file exposes mouth inputs `100`–`118`.
 
-## Lip sync breaks mid-conversation (parent re-renders)
+## Mouth frozen during an active call
 
-**Fixed in SDK 0.2.6 — no consumer workaround needed.** Earlier versions
-froze the mouth when an ancestor of `<MascotClient>` re-rendered mid-call:
-the re-render recreated `MascotPlayback` and stranded the single `play()`
-the stream hook had already issued, so computed visemes were pushed into a
-non-playing engine (audio kept playing, mouth dead, no error). 0.2.6 makes
-the Rive input handles referentially stable and carries playback across any
-legitimate engine recreate, so ordinary parent re-renders no longer break
-playback. Upgrade both packages to `0.2.6`:
+The SDK does not freeze on parent re-renders — Rive input handles are
+referentially stable and playback is carried across any internal
+recreate. A frozen mouth during a call is almost always one of:
 
-```bash
-pnpm add @mascotbot-sdk/lipsync-core@0.2.6 @mascotbot-sdk/lipsync-react@0.2.6
-pnpm store prune && pnpm install --force   # pnpm caches tarballs by hash
-```
-
-If you still see a frozen mouth on `0.2.6`, it is no longer this
-re-render class — pass a stable `naturalLipSyncConfig` (a new object
-literal every render still reinitializes the natural-lipsync processor),
-and confirm audio is actually reaching the tap:
-
-<Tip>
-  To tell *"audio isn't reaching the tap"* from *"visemes computed but
-  not displayed"*, pass `onFrame` to `useLipsyncStream` and log
-  `silenceDetected` / `emittedVisemeId`. Rising emitted IDs with a dead
-  mouth on `0.2.6` means an audio-graph issue (tap not attached / wrong
-  source), **not** playback recreation.
-</Tip>
+- **Unstable `naturalLipSyncConfig`** — a new object literal every
+  render reinitializes the natural-lipsync processor. Pass a module
+  constant or a `useState`/`useMemo` reference.
+- **Audio is not reaching the tap** — pass `onFrame` to `useLipsyncStream`
+  and log `silenceDetected` / `emittedVisemeId`. Rising emitted IDs with
+  a dead mouth means audio is reaching the engine but the Rive handle
+  isn't being written; a flat zero / `silenceDetected: true` means the
+  tap is on a silent corpse (typical of a self-playing realtime
+  provider torn down and not re-attached — see
+  [ElevenLabs 2nd-call diagnostic](#elevenlabs-2nd-call-has-no-lip-sync-1st-call-worked)).
+- **Wrong `source` shape** — `{ kind: "mediaStream", stream }` where
+  `stream` is `null` or has only ended tracks.
 
 ## Mouth flickers when speech stops
 
@@ -108,7 +98,7 @@ is clean, but the mouth is frozen for the entire second call.
 
 You're using the `window.Audio` patch + `<audio>` poll pattern from
 [the ElevenLabs avatar guide](/libraries/elevenlabs-avatar) (the
-cross-browser approach for SDK 0.2.x). The class:
+cross-browser tap approach). The class:
 
 - The patch stashes a reference to the `<audio>` element ElevenLabs
   constructs (e.g. `w.__el = el`) so a 100 ms poll can `tap.attach()`
