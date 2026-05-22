@@ -7,7 +7,7 @@ description: "Learn how to install and use the Mascotbot SDK with React."
 
 # Mascotbot React SDK
 
-`@mascotbot-sdk/lipsync-react` is the React layer of the Mascotbot avatar SDK.
+`@mascotbot/react` is the React layer of the Mascotbot avatar SDK.
 It gives you a provider, a few hooks, and a thin set of Rive components.
 Speech goes in; the avatar speaks in real time.
 
@@ -16,24 +16,24 @@ This page is the map. Each area links to its dedicated guide.
 ## Install
 
 ```ini .npmrc
-@mascotbot-sdk:registry=https://npm.mascot.bot/
+@mascotbot:registry=https://npm.mascot.bot/
 //npm.mascot.bot/:_authToken=mascot_xxx
 ```
 
 <CodeGroup>
 
 ```bash pnpm
-pnpm add @mascotbot-sdk/lipsync-react
+pnpm add @mascotbot/react
 pnpm add @rive-app/react-webgl2 @rive-app/webgl2
 ```
 
 ```bash npm
-npm i @mascotbot-sdk/lipsync-react
+npm i @mascotbot/react
 npm i @rive-app/react-webgl2 @rive-app/webgl2
 ```
 
 ```bash yarn
-yarn add @mascotbot-sdk/lipsync-react
+yarn add @mascotbot/react
 yarn add @rive-app/react-webgl2 @rive-app/webgl2
 ```
 
@@ -47,43 +47,39 @@ registry and key setup is in [Installation](/installation).
 
 | Import | Provides |
 |---|---|
-| `@mascotbot-sdk/lipsync-react` | `LipsyncProvider`, `useLipsync`, `useProcessAudio` — the audio pipeline. |
-| `@mascotbot-sdk/lipsync-react/rive` | `MascotProvider`, `MascotClient`, `MascotRive`, `useMascotRive`, `useMascotInputs`, `useMascotPlayback`, `useLipsyncStream` — the Rive layer. |
+| `@mascotbot/react` | `MascotProvider`, `useMascot`, `useProcessAudio` — the audio pipeline + the top-level provider. |
+| `@mascotbot/react/rive` | `Mascot`, `MascotRive`, `useMascotRive`, `useMascotInputs`, `useMascotPlayback`, `useLipsyncStream` — the Rive layer. |
 
 ## Composition
 
-`LipsyncProvider` owns the licensed inference client. `MascotProvider` +
-`MascotClient` own a Rive avatar. They are siblings — nest them once, near the
-root.
+One provider, one component. `<MascotProvider>` owns the licensed
+inference engine; `<Mascot>` mounts the Rive avatar inside it.
 
 ```tsx
 "use client";
-import { LipsyncProvider } from "@mascotbot-sdk/lipsync-react";
-import { MascotProvider, MascotClient, MascotRive, Fit, Alignment } from "@mascotbot-sdk/lipsync-react/rive";
+import { MascotProvider } from "@mascotbot/react";
+import { Mascot, Fit, Alignment } from "@mascotbot/react/rive";
 
 export default function App() {
   return (
-    <LipsyncProvider apiKey="mascot_pub_…">
-      <MascotProvider>
-        <MascotClient src="/mascot-fox.riv" layout={{ fit: Fit.Contain, alignment: Alignment.Center }}>
-          <MascotRive />
-          {/* your speaking components live here */}
-        </MascotClient>
-      </MascotProvider>
-    </LipsyncProvider>
+    <MascotProvider apiKey="mascot_pub_…">
+      <Mascot
+        src="/mascot-fox.riv"
+        layout={{ fit: Fit.Contain, alignment: Alignment.Center }}
+      />
+    </MascotProvider>
   );
 }
 ```
 
 | Component | Purpose |
 |---|---|
-| `<LipsyncProvider>` | Initializes one `MascotLipsyncClient`. Props extend the [client config](/installation#4-configure-the-client). |
-| `<MascotProvider>` | Top-level Rive context; sibling to `<LipsyncProvider>`. |
-| `<MascotClient src=… \| rive=…>` | Loads Rive and exposes its inputs via context. Pass a `.riv` URL **or** a pre-loaded Rive instance. |
-| `<MascotRive>` | Renders the canvas. Children override the default render (use them for your own loading state). |
+| `<MascotProvider apiKey="…">` | Initializes one `LipsyncClient` and exposes it to descendants. Props extend the [client config](/installation#4-configure-the-client). |
+| `<Mascot src=… \| rive=…>` | Loads Rive and exposes its inputs via context. Pass a `.riv` URL **or** a pre-loaded Rive instance. Renders the canvas by default; children opt out and take control (you can still use `<MascotRive />` inside). |
+| `<MascotRive>` | The canvas component. Use it inside `<Mascot>` children when you need a custom loading slot or layout wrapper; otherwise `<Mascot>` mounts it for you. |
 
 <Tip>
-`<MascotClient>` accepts a pre-loaded `rive` instance you constructed
+`<Mascot>` accepts a pre-loaded `rive` instance you constructed
 yourself. The SDK only writes the mouth, `is_speaking`, and `stress` —
 everything else stays yours. See [Rive co-existence](/concepts/rive-coexistence).
 </Tip>
@@ -92,7 +88,7 @@ everything else stays yours. See [Rive co-existence](/concepts/rive-coexistence)
 
 <Columns cols={2}>
   <Card title="Hooks reference" icon="react" href="/libraries/react-hooks">
-    `useLipsync`, `useProcessAudio`, `useMascotRive`, `useMascotInputs`,
+    `useMascot`, `useProcessAudio`, `useMascotRive`, `useMascotInputs`,
     `useMascotPlayback`, `useLipsyncStream`, and more.
   </Card>
   <Card title="Offline lip sync" icon="box-archive" href="/libraries/offline-lipsync">

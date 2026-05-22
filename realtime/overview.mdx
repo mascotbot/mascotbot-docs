@@ -48,7 +48,7 @@ works in Chrome, Safari and Firefox (`HTMLMediaElement.captureStream()` is not
 implemented in Safari/WebKit, so the SDK does not use it):
 
 ```ts
-import { createElementTap } from "@mascotbot-sdk/lipsync-react";
+import { createElementTap } from "@mascotbot/react";
 
 // Create inside the click that starts the call (so its AudioContext isn't
 // born suspended). `stream` is usable immediately — silent until attach().
@@ -67,7 +67,7 @@ tap.attach(audioEl); // now, or later once the provider's <audio> exists
 WebRTC) is kept audible **and** tapped; an element whose `srcObject` is a
 `MediaStream` (e.g. ElevenLabs' worklet output) is tapped **only**, so the
 provider's own playback isn't doubled. `attach()` is idempotent and may run
-after creation. Also exported from `@mascotbot-sdk/lipsync-core`.
+after creation. Also exported from `@mascotbot/core`.
 
 ## Provider tokens stay on the server
 
@@ -105,7 +105,7 @@ The provider streams raw PCM and does not play it.
 exposes the same audio as a tappable `MediaStream`.
 
 ```ts
-import { createPCMStreamPlayer } from "@mascotbot-sdk/lipsync-core";
+import { createPCMStreamPlayer } from "@mascotbot/core";
 
 const player = createPCMStreamPlayer({ sampleRate: 24000 }); // both emit 24 kHz
 useLipsyncStream({ client, playback, source: { kind: "mediaStream", stream: player.outputStream } });
@@ -206,11 +206,11 @@ identical for OpenAI / Gemini, only the `stream` source differs:
 
 ```tsx
 import { useRef } from "react";
-import { useLipsync } from "@mascotbot-sdk/lipsync-react";
-import { useMascotPlayback, useMascotInputs, useLipsyncStream } from "@mascotbot-sdk/lipsync-react/rive";
+import { useMascot } from "@mascotbot/react";
+import { useMascotPlayback, useMascotInputs, useLipsyncStream } from "@mascotbot/react/rive";
 
 function AvatarReactions({ stream }: { stream: MediaStream | null }) {
-  const { client } = useLipsync();
+  const { client } = useMascot();
   const playback = useMascotPlayback({ stream: true, enableNaturalLipSync: true });
   const { has, custom } = useMascotInputs();
   const speaking = useRef(false);

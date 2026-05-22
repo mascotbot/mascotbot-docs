@@ -1,7 +1,7 @@
 ---
 title: "Install the Mascotbot Lipsync SDK - Private Registry & API Keys"
 sidebarTitle: "Installation"
-description: "Install @mascotbot-sdk/lipsync-react and lipsync-core from the private npm registry, configure your .npmrc auth token, and pick the right development or production API key."
+description: "Install @mascotbot/react and lipsync-core from the private npm registry, configure your .npmrc auth token, and pick the right development or production API key."
 icon: "download"
 'og:title': 'Install the Mascotbot Lipsync SDK | Mascot Bot'
 'og:description': 'Configure the private npm registry, your .npmrc auth token, and dev vs production keys for the Mascotbot avatar SDK.'
@@ -35,7 +35,7 @@ the full model.
 Add a `.npmrc` at the root of your project:
 
 ```ini
-@mascotbot-sdk:registry=https://npm.mascot.bot/
+@mascotbot:registry=https://npm.mascot.bot/
 //npm.mascot.bot/:_authToken=mascot_xxx
 ```
 
@@ -49,11 +49,11 @@ the token from a CI secret / environment variable instead.
 <CodeGroup>
 
 ```bash React
-pnpm add @mascotbot-sdk/lipsync-react
+pnpm add @mascotbot/react
 ```
 
 ```bash Vanilla / Node
-pnpm add @mascotbot-sdk/lipsync-core
+pnpm add @mascotbot/core
 ```
 
 ```bash Rive avatar (peer deps)
@@ -69,7 +69,7 @@ same way once the registry line is in `.npmrc`.
 
 ## 4. Configure the client
 
-Pass configuration to `<LipsyncProvider>` or `MascotLipsyncClient.init`:
+Pass configuration to `<MascotProvider>` (React) or `LipsyncClient.init` (vanilla):
 
 | Option | Type | Default | Notes |
 |---|---|---|---|
@@ -81,10 +81,10 @@ Pass configuration to `<LipsyncProvider>` or `MascotLipsyncClient.init`:
 
 ```tsx
 "use client";
-import { LipsyncProvider } from "@mascotbot-sdk/lipsync-react";
+import { MascotProvider } from "@mascotbot/react";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  return <LipsyncProvider apiKey={process.env.NEXT_PUBLIC_MASCOT_KEY!}>{children}</LipsyncProvider>;
+  return <MascotProvider apiKey={process.env.NEXT_PUBLIC_MASCOT_KEY!}>{children}</MascotProvider>;
 }
 ```
 

@@ -6,7 +6,7 @@ icon: "wrench"
 
 # Troubleshooting
 
-Common integration issues with `@mascotbot-sdk/lipsync-react` 0.2.x and their
+Common integration issues with `@mascotbot/react` 0.2.x and their
 fixes. If your symptom is a license refusal, match the `error.code` against
 the [error-code reference](/reference/error-codes) first.
 
@@ -15,7 +15,7 @@ the [error-code reference](/reference/error-codes) first.
 The private registry needs a valid token in `.npmrc`:
 
 ```ini
-@mascotbot-sdk:registry=https://npm.mascot.bot/
+@mascotbot:registry=https://npm.mascot.bot/
 //npm.mascot.bot/:_authToken=mascot_xxx
 ```
 
@@ -26,7 +26,7 @@ newline.
 
 ## Status never reaches `ready`
 
-Read `status` and `error` from `useLipsync()`:
+Read `status` and `error` from `useMascot()`:
 
 - `status === "refused"` → an authorization problem. Branch on `error.code`
   (`dev_key_on_public_domain`, `prod_key_on_localhost`, `origin_not_allowed`,
@@ -156,8 +156,8 @@ Symptom: widget A (e.g. a Gemini call) works; you end it and start
 widget B (e.g. an ElevenLabs widget) on the same page, and B's mouth
 runs at ~2× / flickers. B alone, or B-then-A, is fine.
 
-The whole page shares **one `<LipsyncProvider>` → one
-`MascotLipsyncClient`**. `useLipsyncStream`'s `mediaStream` pipeline is
+The whole page shares **one `<MascotProvider>` → one
+`LipsyncClient`**. `useLipsyncStream`'s `mediaStream` pipeline is
 keyed on the **stream's identity** and tears down (closes its
 `AudioContext` + worklet + streaming session) only when that stream
 *reference* changes. If, on call-end, you only `player.stop()` but keep
@@ -180,7 +180,7 @@ setVoiceStream(null);     // ← the key line: changes the stream identity
 `createPCMStreamPlayer().stop()` only drops queued audio (barge-in);
 `.close()` releases the context. Self-playing taps must likewise stop
 polling and `setStream(null)`. (Switching the avatar by unmounting the
-`<MascotClient>` subtree tears down implicitly — this bug only surfaces
+`<Mascot>` subtree tears down implicitly — this bug only surfaces
 when a call *ends without unmounting*.)
 
 ## Avatar customizations (gender, colors, outline) don't apply
@@ -229,7 +229,7 @@ Pages Router has stricter module resolution. Transpile the package:
 
 ```js
 /** @type {import("next").NextConfig} */
-module.exports = { transpilePackages: ["@mascotbot-sdk/lipsync-react"] };
+module.exports = { transpilePackages: ["@mascotbot/react"] };
 ```
 
 Then clear the cache: `rm -rf .next`.

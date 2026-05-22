@@ -87,12 +87,12 @@ An optional post-processor merges rapid visemes and preserves the distinctive sh
 The SDK installs from the private registry `npm.mascot.bot`. Add an `.npmrc`, then install alongside the official ElevenLabs client:
 
 ```ini .npmrc
-@mascotbot-sdk:registry=https://npm.mascot.bot/
+@mascotbot:registry=https://npm.mascot.bot/
 //npm.mascot.bot/:_authToken=mascot_xxx
 ```
 
 ```bash
-pnpm add @mascotbot-sdk/lipsync-react @rive-app/react-webgl2 @rive-app/webgl2 @elevenlabs/client
+pnpm add @mascotbot/react @rive-app/react-webgl2 @rive-app/webgl2 @elevenlabs/client
 ```
 
 <Note>
@@ -110,19 +110,19 @@ Three pieces: a server route that mints an ElevenLabs signed URL, the ElevenLabs
 ```tsx
 "use client";
 import { useState } from "react";
-import { LipsyncProvider, useLipsync } from "@mascotbot-sdk/lipsync-react";
-import { MascotProvider, MascotClient, MascotRive, useMascotPlayback, useLipsyncStream } from "@mascotbot-sdk/lipsync-react/rive";
+import { MascotProvider, useMascot } from "@mascotbot/react";
+import { Mascot, MascotRive, useMascotPlayback, useLipsyncStream } from "@mascotbot/react/rive";
 
 function App() {
   return (
-    <LipsyncProvider apiKey="mascot_pub_…">
+    <MascotProvider apiKey="mascot_pub_…">
       <MascotProvider>
-        <MascotClient src="/mascot.riv">
+        <Mascot src="/mascot.riv">
           <MascotRive />
           <ElevenLabsAvatar />
-        </MascotClient>
+        </Mascot>
       </MascotProvider>
-    </LipsyncProvider>
+    </MascotProvider>
   );
 }
 ```
@@ -159,7 +159,7 @@ Required environment variables (server-side only):
 - `ELEVENLABS_API_KEY` — your ElevenLabs API key
 - `ELEVENLABS_AGENT_ID` — your ElevenLabs Conversational AI agent id
 
-Your Mascot Bot key (`mascot_pub_…`) is a separate, browser-safe publishable key passed to `<LipsyncProvider>`.
+Your Mascot Bot key (`mascot_pub_…`) is a separate, browser-safe publishable key passed to `<MascotProvider>`.
 </Info>
 
 ### Step 2: Create Your Avatar Component
@@ -169,14 +169,14 @@ ElevenLabs plays the assistant audio internally through an `<audio>` element. Ca
 ```tsx
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { useLipsync } from "@mascotbot-sdk/lipsync-react";
-import { useMascotPlayback, useLipsyncStream } from "@mascotbot-sdk/lipsync-react/rive";
+import { useMascot } from "@mascotbot/react";
+import { useMascotPlayback, useLipsyncStream } from "@mascotbot/react/rive";
 
 // Stable module constant — see the natural-lip-sync warning below.
 const LIP_SYNC = { minVisemeInterval: 60, mergeWindow: 80 } as const;
 
 export function ElevenLabsAvatar() {
-  const { client, status } = useLipsync();
+  const { client, status } = useMascot();
   const playback = useMascotPlayback({ stream: true, enableNaturalLipSync: true, naturalLipSyncConfig: LIP_SYNC });
   const [stream, setStream] = useState<MediaStream | null>(null);
   const teardownRef = useRef<null | (() => void)>(null);
@@ -192,7 +192,7 @@ export function ElevenLabsAvatar() {
 
   const start = async () => {
     if (status !== "ready") return;
-    // createElementTap from "@mascotbot-sdk/lipsync-react" — create in
+    // createElementTap from "@mascotbot/react" — create in
     // this click gesture so its AudioContext isn't suspended (Safari).
     const tap = createElementTap();
     setStream(tap.stream);
@@ -288,10 +288,10 @@ Mount the avatar small and fixed for an embeddable **AI agent with face**. The S
 
 ```tsx
 <div className="fixed bottom-4 right-4 w-64 h-64">
-  <MascotClient src="/widget-mascot.riv">
+  <Mascot src="/widget-mascot.riv">
     <MascotRive />
     <ElevenLabsAvatar />
-  </MascotClient>
+  </Mascot>
 </div>
 ```
 
@@ -308,7 +308,7 @@ a new turn lands.
 
 ```tsx
 import { useRef } from "react";
-import { useMascotInputs } from "@mascotbot-sdk/lipsync-react/rive";
+import { useMascotInputs } from "@mascotbot/react/rive";
 
 function ElevenLabsAvatarWithGestures() {
   // useMascotInputs() returns a fresh object every render — capture in a
@@ -337,7 +337,7 @@ function ElevenLabsAvatarWithGestures() {
 }
 ```
 
-Declare `gesture` on the parent `<MascotClient inputs={["gesture", ...]}>`
+Declare `gesture` on the parent `<Mascot inputs={["gesture", ...]}>`
 so the SDK exposes a real trigger handle. On `.riv` files without a
 `gesture` input the SDK returns a no-op shim, so the optional-chain
 `fire?.()` stays safe.
@@ -365,8 +365,8 @@ This integration uses the standard SDK surface plus the official ElevenLabs clie
 
 | Surface | Role |
 |---|---|
-| `<LipsyncProvider apiKey>` | Initializes the licensed avatar client. [Config](/installation#4-configure-the-client). |
-| `<MascotProvider>` / `<MascotClient src>` / `<MascotRive>` | Load and render the Rive avatar. |
+| `<MascotProvider apiKey>` | Initializes the licensed avatar client. [Config](/installation#4-configure-the-client). |
+| `<MascotProvider>` / `<Mascot src>` / `<MascotRive>` | Load and render the Rive avatar. |
 | `useMascotPlayback({ stream: true, enableNaturalLipSync, naturalLipSyncConfig })` | The mouth playback engine. |
 | `useLipsyncStream({ client, playback, source: { kind: "mediaStream", stream } })` | Lip-syncs the tapped ElevenLabs audio. [Reference](/libraries/streaming-and-mic). |
 | `@elevenlabs/client` `Conversation` | The official ElevenLabs SDK — unchanged. |
@@ -410,7 +410,7 @@ No audio or viseme data is sent to or stored on Mascotbot servers.
 ### Avatar Not Moving?
 
 <Warning>
-Confirm `status === "ready"` from `useLipsync()`, that the tapped `MediaStream` is non-null (the `window.Audio` patch must be installed **before** `Conversation.startSession`, and `el.srcObject` must be a `MediaStream`), and that the Rive file uses artboard `Character` + state machine `mascotStateMachine` with inputs `100`–`118`.
+Confirm `status === "ready"` from `useMascot()`, that the tapped `MediaStream` is non-null (the `window.Audio` patch must be installed **before** `Conversation.startSession`, and `el.srcObject` must be a `MediaStream`), and that the Rive file uses artboard `Character` + state machine `mascotStateMachine` with inputs `100`–`118`.
 </Warning>
 
 ### Only the First Second of Speech Animates?
@@ -469,7 +469,7 @@ Unlike pre-rendered solutions, this is a **real-time alternative** — dynamic, 
 ## Next Steps
 
 1. Get a key at [app.mascot.bot/api-keys](https://app.mascot.bot/api-keys) and install from the [private registry](/installation).
-2. Add `<LipsyncProvider>` + `<MascotProvider>`/`<MascotClient>` and the avatar component above.
+2. Add `<MascotProvider>` + `<MascotProvider>`/`<Mascot>` and the avatar component above.
 3. Choose a [ready-made mascot](/mascots/ready-to-use-mascots) or your own Rive file.
 4. Tune motion with [natural lip sync](/libraries/natural-lip-sync); review the [realtime overview](/realtime/overview) for the general pattern.
 

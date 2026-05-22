@@ -12,7 +12,7 @@ icon: "arrows-rotate"
 'twitter:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
 ---
 
-After `<LipsyncProvider>` (or `MascotLipsyncClient.init()`) the SDK runs an
+After `<MascotProvider>` (or `LipsyncClient.init()`) the SDK runs an
 authenticated refresh loop in the background — it keeps the inference engine
 licensed without you doing anything. Almost always you ignore this and treat
 `status === "ready"` as the only check you need.
@@ -24,7 +24,7 @@ no automatic retry. Recovery is one call: `reload()`.
 
 ## The status state machine
 
-`useLipsync()` exposes one value, `status`:
+`useMascot()` exposes one value, `status`:
 
 | Value | Means | Audio work allowed? |
 |---|---|---|
@@ -69,10 +69,10 @@ happened, the user is clicking again"; the catch covers "the cutoff fires
 ```tsx
 "use client";
 import { useCallback } from "react";
-import { useLipsync, RefusedError } from "@mascotbot-sdk/lipsync-react";
+import { useMascot, RefusedError } from "@mascotbot/react";
 
 function SpeakButton() {
-  const { client, status, reload } = useLipsync();
+  const { client, status, reload } = useMascot();
 
   const speak = useCallback(async (audio: Float32Array) => {
     // (1) Pre-check: the Provider is already "refused" from a prior cutoff.
@@ -114,7 +114,7 @@ post-cutoff tap feel laggy without adding anything.
 
 ### Why `reload()` instead of "just retry"
 
-`reload()` tears the client down and runs `MascotLipsyncClient.init()` again —
+`reload()` tears the client down and runs `LipsyncClient.init()` again —
 a fresh license, a fresh refresh chain, fresh in-memory state. A naive retry
 of `processAudio()` would just hit the same poisoned session. There is no
 "un-refuse" API; re-init is the recovery, and that's what `reload()` does.
@@ -128,14 +128,14 @@ the underlying cause (e.g. the user pasted a valid key after seeing
 Outside React, listen on the client and recreate it the same way:
 
 ```ts
-import { MascotLipsyncClient, RefusedError } from "@mascotbot-sdk/lipsync-core";
+import { LipsyncClient, RefusedError } from "@mascotbot/core";
 
-let client = await MascotLipsyncClient.init({ apiKey: "mascot_pub_…" });
+let client = await LipsyncClient.init({ apiKey: "mascot_pub_…" });
 
-function wire(c: MascotLipsyncClient) {
+function wire(c: LipsyncClient) {
   c.on("refused", async (_err) => {
     await c.close();
-    client = await MascotLipsyncClient.init({ apiKey: "mascot_pub_…" });
+    client = await LipsyncClient.init({ apiKey: "mascot_pub_…" });
     wire(client);
   });
 }
@@ -162,7 +162,7 @@ recovery you only need `"refused"`.
 
 ## Tell the user what happened
 
-Reading `useLipsync().error` gives you the typed cause when `status` is
+Reading `useMascot().error` gives you the typed cause when `status` is
 `"refused"` or `"error"`. Branch on `error.code`, not the class — that's the
 stable surface and the full code matrix lives in
 [Error codes](/reference/error-codes). For `RefusedError` in particular, the
@@ -193,7 +193,7 @@ fire. Two things make this a non-issue:
     The full `RefusedError.code` matrix and recommended UI per code.
   </Card>
   <Card title="React hooks" icon="react" href="/libraries/react-hooks">
-    `useLipsync` — the `status` / `error` / `reload` surface.
+    `useMascot` — the `status` / `error` / `reload` surface.
   </Card>
   <Card title="API conventions" icon="ruler-combined" href="/reference/api-conventions">
     Events vs callbacks, the error taxonomy, module boundaries.

@@ -17,29 +17,29 @@ installed yet, do [Installation](/installation) first.
 
 ## 1. Mount the provider
 
-`<LipsyncProvider>` initializes a single `MascotLipsyncClient` for your app
+`<MascotProvider>` initializes a single `LipsyncClient` for your app
 and exposes it through context.
 
 ```tsx
 // app/layout.tsx (or wherever you mount providers)
 "use client";
-import { LipsyncProvider } from "@mascotbot-sdk/lipsync-react";
+import { MascotProvider } from "@mascotbot/react";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  return <LipsyncProvider apiKey="mascot_pub_…">{children}</LipsyncProvider>;
+  return <MascotProvider apiKey="mascot_pub_…">{children}</MascotProvider>;
 }
 ```
 
-Anywhere inside it, `useLipsync()` gives you the client and status, and
+Anywhere inside it, `useMascot()` gives you the client and status, and
 `useProcessAudio()` fetches a URL, decodes, resamples to 16 kHz, and runs
 inference once:
 
 ```tsx
 "use client";
-import { useLipsync, useProcessAudio } from "@mascotbot-sdk/lipsync-react";
+import { useMascot, useProcessAudio } from "@mascotbot/react";
 
 export function Demo() {
-  const { status, error } = useLipsync();
+  const { status, error } = useMascot();
   const { result, loading } = useProcessAudio("/audio/greeting.wav");
 
   if (status === "initializing") return <p>Loading SDK…</p>;
@@ -64,34 +64,34 @@ subpath:
 
 ```tsx
 "use client";
-import { LipsyncProvider, useLipsync, useProcessAudio } from "@mascotbot-sdk/lipsync-react";
+import { MascotProvider, useMascot, useProcessAudio } from "@mascotbot/react";
 import {
   MascotProvider,
-  MascotClient,
+  Mascot,
   MascotRive,
   useMascotPlayback,
   Fit,
   Alignment,
-} from "@mascotbot-sdk/lipsync-react/rive";
+} from "@mascotbot/react/rive";
 
 function App() {
   return (
-    <LipsyncProvider apiKey="mascot_pub_…">
+    <MascotProvider apiKey="mascot_pub_…">
       <MascotProvider>
-        <MascotClient
+        <Mascot
           src="/mascot-fox.riv"
           layout={{ fit: Fit.Contain, alignment: Alignment.Center }}
         >
           <MascotRive />
           <SamplePlayer />
-        </MascotClient>
+        </Mascot>
       </MascotProvider>
-    </LipsyncProvider>
+    </MascotProvider>
   );
 }
 
 function SamplePlayer() {
-  const { status } = useLipsync();
+  const { status } = useMascot();
   const { result } = useProcessAudio("/audio/greeting.wav");
   const playback = useMascotPlayback({ enableNaturalLipSync: true });
 
@@ -142,11 +142,11 @@ Drive the avatar from the user's microphone in real time with
 ```tsx
 "use client";
 import { useEffect, useState } from "react";
-import { useLipsync } from "@mascotbot-sdk/lipsync-react";
-import { useMascotPlayback, useLipsyncStream } from "@mascotbot-sdk/lipsync-react/rive";
+import { useMascot } from "@mascotbot/react";
+import { useMascotPlayback, useLipsyncStream } from "@mascotbot/react/rive";
 
 function MicAvatar() {
-  const { client, status } = useLipsync();
+  const { client, status } = useMascot();
   const playback = useMascotPlayback({ stream: true, enableNaturalLipSync: true });
   const [active, setActive] = useState(false);
   const isLive = active && status === "ready" && !!client;
@@ -181,12 +181,12 @@ default — there is no file to copy. Pass `workletUrl` only if your CSP forbids
 
 ## 4. Vanilla JavaScript
 
-Not using React? Use `@mascotbot-sdk/lipsync-core` directly:
+Not using React? Use `@mascotbot/core` directly:
 
 ```ts
-import { MascotLipsyncClient, parseTimeline } from "@mascotbot-sdk/lipsync-core";
+import { LipsyncClient, parseTimeline } from "@mascotbot/core";
 
-const client = await MascotLipsyncClient.init({
+const client = await LipsyncClient.init({
   apiKey: "mascot_pub_…",
   userId: "user_42", // optional, for accurate usage attribution
 });
@@ -205,18 +205,18 @@ await client.stop(); // release resources when done
 ```
 
 For the Rive engine without React, import from
-`@mascotbot-sdk/lipsync-core/rive` — see [Core SDK](/core/client).
+`@mascotbot/core/rive` — see [Core SDK](/core/client).
 
 ## Error handling
 
-`useLipsync()` exposes `status` and `error`. Branch on `error.code`, not the
+`useMascot()` exposes `status` and `error`. Branch on `error.code`, not the
 subclass:
 
 ```tsx
-import { RefusedError, NetworkError, EngineError } from "@mascotbot-sdk/lipsync-react";
+import { RefusedError, NetworkError, EngineError } from "@mascotbot/react";
 
 function StatusUI() {
-  const { status, error } = useLipsync();
+  const { status, error } = useMascot();
   if (status !== "error" && status !== "refused") return null;
   if (error instanceof RefusedError) {
     if (error.code === "key_disabled") return <ReSubscribe />;

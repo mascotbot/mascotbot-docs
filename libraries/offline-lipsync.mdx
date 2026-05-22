@@ -41,13 +41,13 @@ versioned JSON.
 
 ```tsx
 "use client";
-import { useLipsync, useProcessAudio, parseTimeline } from "@mascotbot-sdk/lipsync-react";
-import { useMascotPlayback } from "@mascotbot-sdk/lipsync-react/rive";
+import { useMascot, useProcessAudio, parseTimeline } from "@mascotbot/react";
+import { useMascotPlayback } from "@mascotbot/react/rive";
 
 const KEY = "greeting.vtl";
 
 function Greeting() {
-  const { status } = useLipsync();
+  const { status } = useMascot();
   const cached = typeof window !== "undefined" && localStorage.getItem(KEY);
   // Only run inference when there is no cached timeline.
   const { result } = useProcessAudio(cached ? null : "/audio/greeting.wav");
@@ -75,9 +75,9 @@ function Greeting() {
 ### Vanilla
 
 ```ts
-import { MascotLipsyncClient, parseTimeline } from "@mascotbot-sdk/lipsync-core";
+import { LipsyncClient, parseTimeline } from "@mascotbot/core";
 
-const client = await MascotLipsyncClient.init({ apiKey: "mascot_pub_…" });
+const client = await LipsyncClient.init({ apiKey: "mascot_pub_…" });
 
 // 1. Generate once (16 kHz mono Float32 in [-1, 1])
 const { timeline } = await client.processAudio(audio16kMono);
@@ -97,7 +97,7 @@ If you already have per-frame viseme ids (e.g. from your own batch job), build
 a timeline with the pure converters instead of running inference:
 
 ```ts
-import { framesToTimeline, timelineToCues } from "@mascotbot-sdk/lipsync-core";
+import { framesToTimeline, timelineToCues } from "@mascotbot/core";
 
 const timeline = framesToTimeline(visemeIdsPer10ms, { speechMs });
 playback.setTimeline(timeline);
@@ -137,7 +137,7 @@ with `.code === "bad_timeline"` on a version or shape mismatch — so a stale
 stored timeline fails loudly instead of animating garbage:
 
 ```ts
-import { parseTimeline, LipsyncError } from "@mascotbot-sdk/lipsync-core";
+import { parseTimeline, LipsyncError } from "@mascotbot/core";
 
 try {
   playback.setTimeline(parseTimeline(JSON.parse(stored)));

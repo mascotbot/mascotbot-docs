@@ -1,28 +1,28 @@
 ---
-title: "MascotLipsyncClient - Vanilla JavaScript Lip Sync Core API"
+title: "LipsyncClient - Vanilla JavaScript Lip Sync Core API"
 sidebarTitle: "Core client"
-description: "Use @mascotbot-sdk/lipsync-core without React: MascotLipsyncClient.init, processAudio, createStreamingSession, resample, diagnostics, events, and the vanilla Rive engine."
+description: "Use @mascotbot/core without React: LipsyncClient.init, processAudio, createStreamingSession, resample, diagnostics, events, and the vanilla Rive engine."
 icon: "cube"
-'og:title': 'MascotLipsyncClient — Vanilla JS Lip Sync Core | Mascot Bot SDK'
+'og:title': 'LipsyncClient — Vanilla JS Lip Sync Core | Mascot Bot SDK'
 'og:description': 'The framework-agnostic core: init, processAudio, streaming sessions, resample, diagnostics, events, and vanilla Rive playback.'
 'og:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
 'og:url': 'https://docs.mascot.bot/core/client'
-'twitter:title': 'MascotLipsyncClient — Vanilla JS Lip Sync Core'
+'twitter:title': 'LipsyncClient — Vanilla JS Lip Sync Core'
 'twitter:description': 'The framework-agnostic core: init, processAudio, streaming, diagnostics, events.'
 'twitter:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
 ---
 
-`@mascotbot-sdk/lipsync-core` is the framework-agnostic engine — no React, no
+`@mascotbot/core` is the framework-agnostic engine — no React, no
 Rive on the root entry. Use it in vanilla apps, Web Workers, or Node-adjacent
 environments. React apps get all of this re-exported through
-[`@mascotbot-sdk/lipsync-react`](/libraries/react-sdk).
+[`@mascotbot/react`](/libraries/react-sdk).
 
 ## Initialize
 
 ```ts
-import { MascotLipsyncClient } from "@mascotbot-sdk/lipsync-core";
+import { LipsyncClient } from "@mascotbot/core";
 
-const client = await MascotLipsyncClient.init({
+const client = await LipsyncClient.init({
   apiKey: "mascot_pub_…",
   userId: "user_42",          // optional — stable id for MAU attribution
   // licenseEndpoint, devMode, logger, fingerprintHash also accepted
@@ -30,7 +30,7 @@ const client = await MascotLipsyncClient.init({
 ```
 
 `init` exchanges your key with the edge worker and loads the WASM runtime.
-Configuration mirrors [`<LipsyncProvider>`](/installation#4-configure-the-client).
+Configuration mirrors [`<MascotProvider>`](/installation#4-configure-the-client).
 
 ## `processAudio(samples, opts?)`
 
@@ -119,7 +119,7 @@ its inputs, and drive `MascotPlayback`:
 
 ```ts
 import { Rive, EventType } from "@rive-app/webgl2";
-import { MascotPlayback, getRiveInputs, STATE_MACHINE_NAMES } from "@mascotbot-sdk/lipsync-core/rive";
+import { MascotPlayback, getRiveInputs, STATE_MACHINE_NAMES } from "@mascotbot/core/rive";
 
 const rive = new Rive({
   src: "/mascot-fox.riv",

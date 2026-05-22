@@ -7,7 +7,7 @@ mode: "center"
 <Update label="2026-05-16" tags={["feature"]}>
 ## SDK 0.2.3 — interactive avatar SDK, offline timelines, unified streaming
 
-The SDK is now two packages — `@mascotbot-sdk/lipsync-core` and `@mascotbot-sdk/lipsync-react` — a single composable surface for real-time interactive avatars. Continuously-updated models and assets are delivered from Mascotbot; you ship the avatar. The documentation has been rewritten end to end for the new surface.
+The SDK is now two packages — `@mascotbot/core` and `@mascotbot/react` — a single composable surface for real-time interactive avatars. Continuously-updated models and assets are delivered from Mascotbot; you ship the avatar. The documentation has been rewritten end to end for the new surface.
 
 - **Real-time pipeline** — audio in, animated avatar out; one composable surface.
 - **Serializable offline timeline** — `processAudio()` returns a versioned `VisemeTimeline`. Persist it as JSON and replay later with zero reprocessing via `parseTimeline` + `setTimeline`.

@@ -38,10 +38,10 @@ Rive API changes.
 ## Get the raw instance
 
 ```tsx
-import { useMascotRive } from "@mascotbot-sdk/lipsync-react/rive";
+import { useMascotRive } from "@mascotbot/react/rive";
 
 function Costume() {
-  const { rive } = useMascotRive(); // inside <MascotClient>
+  const { rive } = useMascotRive(); // inside <Mascot>
   // rive is the unmodified @rive-app/* instance.
   // Set any input, fire any trigger, attach EventType.RiveEvent listeners,
   // bind a ViewModel — none of it involves the SDK.
@@ -49,7 +49,7 @@ function Costume() {
 ```
 
 Framework-agnostic, the same is true of `getRiveInputs(rive)` from
-`@mascotbot-sdk/lipsync-core/rive` — it reads inputs off a Rive instance you
+`@mascotbot/core/rive` — it reads inputs off a Rive instance you
 constructed and own.
 
 ## Presence checks — use `has()`, not raw introspection
@@ -60,7 +60,7 @@ That shim is **structurally identical** to a real input — you cannot tell them
 apart by inspection. To know whether an input actually exists, ask:
 
 ```tsx
-import { useMascotInputs } from "@mascotbot-sdk/lipsync-react/rive";
+import { useMascotInputs } from "@mascotbot/react/rive";
 
 function Wave() {
   const { has, custom } = useMascotInputs<"wave">();
@@ -71,7 +71,7 @@ function Wave() {
 
 `has(name)` is the authoritative check. The framework-agnostic equivalents are
 `getRiveInputs(rive).has(name)` and `hasRiveInput(rive, name)` in
-`@mascotbot-sdk/lipsync-core/rive`. `custom` from `useMascotInputs` is **never
+`@mascotbot/core/rive`. `custom` from `useMascotInputs` is **never
 `undefined`**, which removes the optional-chaining tax from consumer code.
 Drive the input itself however you like — that part is entirely yours.
 

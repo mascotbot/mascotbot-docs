@@ -122,19 +122,19 @@ A nostalgic-yet-modern floating robot with an expressive screen, merging retro c
 
 Every mascot above ships as a Rive file with the artboard `Character` and the
 `mascotStateMachine` state machine the SDK expects — drop one into
-`<MascotClient src>` and it lip-syncs with no extra setup:
+`<Mascot src>` and it lip-syncs with no extra setup:
 
 ```tsx
-import { LipsyncProvider } from "@mascotbot-sdk/lipsync-react";
-import { MascotProvider, MascotClient, MascotRive } from "@mascotbot-sdk/lipsync-react/rive";
+import { MascotProvider } from "@mascotbot/react";
+import { Mascot, MascotRive } from "@mascotbot/react/rive";
 
-<LipsyncProvider apiKey="mascot_pub_…">
+<MascotProvider apiKey="mascot_pub_…">
   <MascotProvider>
-    <MascotClient src="/cat.riv">
+    <Mascot src="/cat.riv">
       <MascotRive />
-    </MascotClient>
+    </Mascot>
   </MascotProvider>
-</LipsyncProvider>
+</MascotProvider>
 ```
 
 The SDK only animates the mouth, `is_speaking`, and `stress` — every other

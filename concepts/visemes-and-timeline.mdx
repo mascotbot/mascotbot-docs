@@ -77,7 +77,7 @@ All three are pure functions on the package root.
 | `parseTimeline` | `(input: unknown) → VisemeTimeline` | Validate untrusted/persisted JSON and return a typed timeline, or throw. |
 
 ```ts
-import { framesToTimeline, timelineToCues, parseTimeline } from "@mascotbot-sdk/lipsync-core";
+import { framesToTimeline, timelineToCues, parseTimeline } from "@mascotbot/core";
 ```
 
 ## `parseTimeline` is the trust boundary
@@ -88,7 +88,7 @@ offsets, the leading `t: 0`, and viseme-id ranges. On any mismatch it throws a
 `LipsyncError` whose `.code === "bad_timeline"`:
 
 ```ts
-import { parseTimeline, LipsyncError } from "@mascotbot-sdk/lipsync-core";
+import { parseTimeline, LipsyncError } from "@mascotbot/core";
 
 try {
   const tl = parseTimeline(JSON.parse(stored));

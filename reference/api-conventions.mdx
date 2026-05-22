@@ -70,10 +70,10 @@ Import the narrowest entry point for the job:
 
 | Entry | Contains | Excludes |
 |---|---|---|
-| `@mascotbot-sdk/lipsync-core` | Engine, `VisemeTimeline` + helpers, `createPCMStreamPlayer` | No Rive, no React |
-| `@mascotbot-sdk/lipsync-core/rive` | `MascotPlayback`, `getRiveInputs`, `hasRiveInput` | No React; `@rive-app/webgl2` is an optional peer |
-| `@mascotbot-sdk/lipsync-react` | `LipsyncProvider`, `useLipsync`, `useProcessAudio` | No Rive |
-| `@mascotbot-sdk/lipsync-react/rive` | The React Rive layer | — |
+| `@mascotbot/core` | Engine, `VisemeTimeline` + helpers, `createPCMStreamPlayer` | No Rive, no React |
+| `@mascotbot/core/rive` | `MascotPlayback`, `getRiveInputs`, `hasRiveInput` | No React; `@rive-app/webgl2` is an optional peer |
+| `@mascotbot/react` | `MascotProvider`, `useMascot`, `useProcessAudio` | No Rive |
+| `@mascotbot/react/rive` | The React Rive layer | — |
 
 A Rive type never appears on the core root entry, and core never depends on
 React. The split keeps bundles minimal and the dependency graph honest.

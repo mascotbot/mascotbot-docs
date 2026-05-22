@@ -1,10 +1,10 @@
 ---
-title: "Mascotbot React Hooks Reference - useLipsync, useMascotPlayback & More"
+title: "Mascotbot React Hooks Reference - useMascot, useMascotPlayback & More"
 sidebarTitle: "Hooks reference"
-description: "Complete reference for the Mascotbot lipsync React hooks: useLipsync, useProcessAudio, useMascotRive, useMascotInputs, useMascotPlayback, useLipsyncStream, useLoadRive, and useRiveAsset."
+description: "Complete reference for the Mascotbot lipsync React hooks: useMascot, useProcessAudio, useMascotRive, useMascotInputs, useMascotPlayback, useLipsyncStream, useLoadRive, and useRiveAsset."
 icon: "code"
 'og:title': 'Mascotbot React Hooks Reference | Mascot Bot SDK'
-'og:description': 'Every hook in @mascotbot-sdk/lipsync-react and /rive — signatures, return shapes, and usage.'
+'og:description': 'Every hook in @mascotbot/react and /rive — signatures, return shapes, and usage.'
 'og:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
 'og:url': 'https://docs.mascot.bot/libraries/react-hooks'
 'twitter:title': 'Mascotbot React Hooks Reference | Mascot Bot SDK'
@@ -13,22 +13,22 @@ icon: "code"
 ---
 
 Every hook in the React SDK, grouped by subpath. Audio-pipeline hooks come
-from `@mascotbot-sdk/lipsync-react`; Rive hooks from
-`@mascotbot-sdk/lipsync-react/rive`.
+from `@mascotbot/react`; Rive hooks from
+`@mascotbot/react/rive`.
 
-## Audio pipeline — `@mascotbot-sdk/lipsync-react`
+## Audio pipeline — `@mascotbot/react`
 
-### `useLipsync()`
+### `useMascot()`
 
 ```ts
-const { client, status, error, reload } = useLipsync();
+const { client, status, error, reload } = useMascot();
 ```
 
-The licensed inference client from the enclosing `<LipsyncProvider>`.
+The licensed inference client from the enclosing `<MascotProvider>`.
 
 | Field | Type | Notes |
 |---|---|---|
-| `client` | `MascotLipsyncClient \| null` | `null` until init resolves |
+| `client` | `LipsyncClient \| null` | `null` until init resolves |
 | `status` | `LipsyncStatus` | `idle \| initializing \| ready \| running \| degraded \| refused \| error` |
 | `error` | `Error \| null` | A typed [error](/reference/error-codes) on `refused` / `error` |
 | `reload` | `() => void` | Re-runs init (e.g. after the user fixes a key) |
@@ -54,7 +54,7 @@ Hand `result.timeline` to `useMascotPlayback().setTimeline()`, or
 `JSON.stringify` it to persist and replay later with zero reprocessing —
 [Offline lip sync](/libraries/offline-lipsync).
 
-## Rive layer — `@mascotbot-sdk/lipsync-react/rive`
+## Rive layer — `@mascotbot/react/rive`
 
 ### `useMascotRive()`
 
@@ -62,7 +62,7 @@ Hand `result.timeline` to `useMascotPlayback().setTimeline()`, or
 const { rive, isRiveLoaded, RiveComponent, setImageAsset } = useMascotRive();
 ```
 
-The Rive instance + canvas for the enclosing `<MascotClient>`. `rive` is the
+The Rive instance + canvas for the enclosing `<Mascot>`. `rive` is the
 **raw, unmodified** `@rive-app/*` instance — yours for data binding, custom
 inputs, events, and ViewModels. The SDK never wraps it. `setImageAsset` swaps
 a runtime image asset (e.g. a custom face texture).
@@ -134,7 +134,7 @@ Full guide: [Streaming & microphone](/libraries/streaming-and-mic).
 
 | Hook | Returns | Use when |
 |---|---|---|
-| `useLoadRive(options?)` | `{ rive, isRiveLoaded, RiveComponent, setImageAsset }` | You need to load Rive yourself; pass an options object (`{ stateMachineName, ... }`). `<MascotClient>` uses this internally. |
+| `useLoadRive(options?)` | `{ rive, isRiveLoaded, RiveComponent, setImageAsset }` | You need to load Rive yourself; pass an options object (`{ stateMachineName, ... }`). `<Mascot>` uses this internally. |
 | `useRiveAsset(riveParams?, opts?)` | `RiveState & { setImageAsset }` | Lowest-level escape hatch: `useRive` + a runtime image-asset swapper. |
 | `useSafeStateMachineInput(rive, _, name, init?)` | input or `DEFAULT_SM_INPUT` | Single-input lookup with the `mascotStateMachine` / `InLesson` fallback shim. |
 | `useIsMobileDevice()` | `boolean` | Touch + UA + screen-size heuristic (e.g. to pick a transition speed). |

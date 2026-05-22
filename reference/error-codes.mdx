@@ -35,10 +35,10 @@ just the domain bucket.
 </Tip>
 
 ```tsx
-import { RefusedError, NetworkError, EngineError } from "@mascotbot-sdk/lipsync-react";
+import { RefusedError, NetworkError, EngineError } from "@mascotbot/react";
 
 function StatusUI() {
-  const { status, error } = useLipsync();
+  const { status, error } = useMascot();
   if (status !== "error" && status !== "refused") return null;
   if (error instanceof RefusedError) {
     switch (error.code) {
@@ -94,7 +94,7 @@ Some `LipsyncError`s are thrown entirely client-side and still carry
 | `LipsyncError` | `bad_timeline` | `parseTimeline(input)` rejected a persisted/untrusted timeline — version mismatch, non-positive `frameMs`, non-monotonic cue offsets, missing leading `t: 0`, out-of-range viseme id, or wrong field types. | "Regenerate via `client.processAudio()`" — **not** a license/network condition. |
 
 ```ts
-import { parseTimeline, LipsyncError } from "@mascotbot-sdk/lipsync-core";
+import { parseTimeline, LipsyncError } from "@mascotbot/core";
 
 try {
   playback.setTimeline(parseTimeline(JSON.parse(stored)));

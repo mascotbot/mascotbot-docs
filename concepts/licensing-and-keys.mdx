@@ -40,7 +40,7 @@ meters. Get and manage keys at
 
 <Steps>
   <Step title="Init">
-    On mount, `LipsyncProvider` / `MascotLipsyncClient.init` posts your key to
+    On mount, `MascotProvider` / `LipsyncClient.init` posts your key to
     the edge worker. On success the worker returns a short-lived license and
     the WASM runtime; `status` moves `initializing → ready`.
   </Step>
@@ -58,7 +58,7 @@ meters. Get and manage keys at
 </Steps>
 
 `status` is one of `idle`, `initializing`, `ready`, `running`, `degraded`,
-`refused`, `error`. Read it from `useLipsync()` (React) or `client.status`
+`refused`, `error`. Read it from `useMascot()` (React) or `client.status`
 (vanilla), and gate audio work on `status === "ready"`.
 
 ## Usage metering
@@ -74,9 +74,9 @@ plan:
   `userId` so each user attributes correctly across sessions and devices.
 
 ```tsx
-<LipsyncProvider apiKey="mascot_pub_…" userId={authedUser?.id}>
+<MascotProvider apiKey="mascot_pub_…" userId={authedUser?.id}>
   {children}
-</LipsyncProvider>
+</MascotProvider>
 ```
 
 Set `userId` regardless of plan — it keeps both metering and your usage

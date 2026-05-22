@@ -97,12 +97,12 @@ Gemini Live sessions are time-limited. Re-mint a token and reconnect when a sess
 ### Installation
 
 ```ini .npmrc
-@mascotbot-sdk:registry=https://npm.mascot.bot/
+@mascotbot:registry=https://npm.mascot.bot/
 //npm.mascot.bot/:_authToken=mascot_xxx
 ```
 
 ```bash
-pnpm add @mascotbot-sdk/lipsync-react @rive-app/react-webgl2 @rive-app/webgl2 @google/genai
+pnpm add @mascotbot/react @rive-app/react-webgl2 @rive-app/webgl2 @google/genai
 ```
 
 <Note>
@@ -113,19 +113,19 @@ Get your Mascot Bot key at [app.mascot.bot/api-keys](https://app.mascot.bot/api-
 
 ```tsx
 "use client";
-import { LipsyncProvider } from "@mascotbot-sdk/lipsync-react";
-import { MascotProvider, MascotClient, MascotRive } from "@mascotbot-sdk/lipsync-react/rive";
+import { MascotProvider } from "@mascotbot/react";
+import { Mascot, MascotRive } from "@mascotbot/react/rive";
 
 export default function App() {
   return (
-    <LipsyncProvider apiKey="mascot_pub_…">
+    <MascotProvider apiKey="mascot_pub_…">
       <MascotProvider>
-        <MascotClient src="/mascot.riv">
+        <Mascot src="/mascot.riv">
           <MascotRive />
           <GeminiAvatar />
-        </MascotClient>
+        </Mascot>
       </MascotProvider>
-    </LipsyncProvider>
+    </MascotProvider>
   );
 }
 ```
@@ -171,13 +171,13 @@ Gemini Live does not play audio — `createPCMStreamPlayer` plays it and exposes
 ```tsx
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { useLipsync, createPCMStreamPlayer, type PCMStreamPlayer } from "@mascotbot-sdk/lipsync-react";
-import { useMascotPlayback, useLipsyncStream } from "@mascotbot-sdk/lipsync-react/rive";
+import { useMascot, createPCMStreamPlayer, type PCMStreamPlayer } from "@mascotbot/react";
+import { useMascotPlayback, useLipsyncStream } from "@mascotbot/react/rive";
 
 const LIP_SYNC = { minVisemeInterval: 60, mergeWindow: 80 } as const;
 
 export function GeminiAvatar() {
-  const { client, status } = useLipsync();
+  const { client, status } = useMascot();
   const playback = useMascotPlayback({ stream: true, enableNaturalLipSync: true, naturalLipSyncConfig: LIP_SYNC });
   const playerRef = useRef<PCMStreamPlayer | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -272,8 +272,8 @@ The integration uses the standard SDK surface plus Google's official SDK:
 
 | Surface | Role |
 |---|---|
-| `<LipsyncProvider apiKey>` | Licensed avatar client. [Config](/installation#4-configure-the-client). |
-| `<MascotProvider>` / `<MascotClient src>` / `<MascotRive>` | Load and render the avatar. |
+| `<MascotProvider apiKey>` | Licensed avatar client. [Config](/installation#4-configure-the-client). |
+| `<MascotProvider>` / `<Mascot src>` / `<MascotRive>` | Load and render the avatar. |
 | `useMascotPlayback({ stream: true, enableNaturalLipSync })` | Mouth playback engine. |
 | `createPCMStreamPlayer({ sampleRate: 24000 })` | Plays Gemini PCM + exposes the tap. [Reference](/core/pcm-stream-player). |
 | `useLipsyncStream({ source: { kind: "mediaStream", stream } })` | Lip-syncs the tapped audio. [Reference](/libraries/streaming-and-mic). |

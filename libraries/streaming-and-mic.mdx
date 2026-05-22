@@ -17,10 +17,10 @@ graph, runs inference per window, and feeds visemes into a `MascotPlayback`.
 One hook, three input sources.
 
 ```ts
-import { useLipsyncStream } from "@mascotbot-sdk/lipsync-react/rive";
+import { useLipsyncStream } from "@mascotbot/react/rive";
 
 const { error, attached, pushAudio, pushBase64PCM16, reset } = useLipsyncStream({
-  client,                       // from useLipsync()
+  client,                       // from useMascot()
   playback,                     // from useMascotPlayback({ stream: true })
   source: { kind: "mic" },      // see sources below
   enabled: isLive,              // optional gate
@@ -46,11 +46,11 @@ The user's microphone. Optional `constraints?: MediaTrackConstraints`.
 ```tsx
 "use client";
 import { useEffect, useState } from "react";
-import { useLipsync } from "@mascotbot-sdk/lipsync-react";
-import { useMascotPlayback, useLipsyncStream } from "@mascotbot-sdk/lipsync-react/rive";
+import { useMascot } from "@mascotbot/react";
+import { useMascotPlayback, useLipsyncStream } from "@mascotbot/react/rive";
 
 function MicAvatar() {
-  const { client, status } = useLipsync();
+  const { client, status } = useMascot();
   const playback = useMascotPlayback({ stream: true, enableNaturalLipSync: true });
   const [active, setActive] = useState(false);
   const isLive = active && status === "ready" && !!client;
@@ -83,7 +83,7 @@ provider's voice. The capture point is the playback point, so the mouth
 cannot drift ahead of the speech. Pass `null` to detach.
 
 ```tsx
-import { createElementTap, type ElementTap } from "@mascotbot-sdk/lipsync-react";
+import { createElementTap, type ElementTap } from "@mascotbot/react";
 
 const audioRef = useRef<HTMLAudioElement>(null);
 const tapRef = useRef<ElementTap | null>(null);
@@ -103,7 +103,7 @@ function play() {
 useLipsyncStream({ client, playback, source: { kind: "mediaStream", stream } });
 ```
 
-`createElementTap()` is an SDK export (`@mascotbot-sdk/lipsync-react`,
+`createElementTap()` is an SDK export (`@mascotbot/react`,
 re-exported from `lipsync-core`) — the cross-browser tap detailed in
 [Realtime providers → Tap a playing element](/realtime/overview#tap-a-playing-element)
 (it replaces `captureStream()`, which Safari does not implement). The same

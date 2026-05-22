@@ -25,7 +25,7 @@ It is one option on `useMascotPlayback`. This works for every path — offline,
 mic, and realtime:
 
 ```tsx
-import { useMascotPlayback } from "@mascotbot-sdk/lipsync-react/rive";
+import { useMascotPlayback } from "@mascotbot/react/rive";
 
 const playback = useMascotPlayback({ enableNaturalLipSync: true });
 ```
@@ -70,7 +70,7 @@ and bilabials. Both `DEFAULT_NATURAL_LIPSYNC_CONFIG` and
 `DEFAULT_CRITICAL_VISEME_IDS` are exported so you can derive from them:
 
 ```ts
-import { DEFAULT_NATURAL_LIPSYNC_CONFIG, DEFAULT_CRITICAL_VISEME_IDS } from "@mascotbot-sdk/lipsync-react/rive";
+import { DEFAULT_NATURAL_LIPSYNC_CONFIG, DEFAULT_CRITICAL_VISEME_IDS } from "@mascotbot/react/rive";
 
 // Hold s/z too, otherwise defaults
 export const WITH_SIBILANTS = {
@@ -125,11 +125,11 @@ smoother (lazier) motion; lower them for crisper articulation.
 
 ## Without React
 
-The processor is exported from `@mascotbot-sdk/lipsync-core/rive` as a class
+The processor is exported from `@mascotbot/core/rive` as a class
 and a function:
 
 ```ts
-import { processNaturalLipSync, NaturalLipSyncProcessor } from "@mascotbot-sdk/lipsync-core/rive";
+import { processNaturalLipSync, NaturalLipSyncProcessor } from "@mascotbot/core/rive";
 ```
 
 When you enable `enableNaturalLipSync` on `MascotPlayback` /

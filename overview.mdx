@@ -22,7 +22,7 @@ those are recipes you compose, not framework you adopt.
 
 <Steps>
   <Step title="Authorize">
-    `LipsyncProvider` (or `MascotLipsyncClient.init`) exchanges your API key
+    `MascotProvider` (or `LipsyncClient.init`) exchanges your API key
     with the edge worker, which returns a short-lived license and the WASM
     runtime. Sessions auto-refresh in the background.
   </Step>
@@ -45,12 +45,12 @@ narrowest one for your use case.
 
 | Import | What it is |
 |---|---|
-| `@mascotbot-sdk/lipsync-core` | Engine + offline `VisemeTimeline` + `createPCMStreamPlayer`. Framework-agnostic, no Rive, no React. |
-| `@mascotbot-sdk/lipsync-core/rive` | Framework-agnostic Rive playback (`MascotPlayback`, `getRiveInputs`, `hasRiveInput`). |
-| `@mascotbot-sdk/lipsync-react` | React provider + `useLipsync` / `useProcessAudio`. |
-| `@mascotbot-sdk/lipsync-react/rive` | React Rive layer: `<MascotClient>`, `useMascotRive`, `useMascotInputs`, `useMascotPlayback`, `useLipsyncStream`. |
+| `@mascotbot/core` | Engine + offline `VisemeTimeline` + `createPCMStreamPlayer`. Framework-agnostic, no Rive, no React. |
+| `@mascotbot/core/rive` | Framework-agnostic Rive playback (`MascotPlayback`, `getRiveInputs`, `hasRiveInput`). |
+| `@mascotbot/react` | React provider + `useMascot` / `useProcessAudio`. |
+| `@mascotbot/react/rive` | React Rive layer: `<Mascot>`, `useMascotRive`, `useMascotInputs`, `useMascotPlayback`, `useLipsyncStream`. |
 
-Most React apps use `@mascotbot-sdk/lipsync-react` + `@mascotbot-sdk/lipsync-react/rive`.
+Most React apps use `@mascotbot/react` + `@mascotbot/react/rive`.
 The `/rive` subpaths take `@rive-app/webgl2` (and `@rive-app/react-webgl2` for
 React) as an **optional peer dependency** — install it only if you render an
 avatar.

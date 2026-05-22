@@ -22,7 +22,7 @@ It knows nothing about any provider — provider transport parsing is your
 glue and stays in your app.
 
 ```ts
-import { createPCMStreamPlayer } from "@mascotbot-sdk/lipsync-core";
+import { createPCMStreamPlayer } from "@mascotbot/core";
 
 const player = createPCMStreamPlayer({ sampleRate: 24000 });
 ```
@@ -61,8 +61,8 @@ Create the player **inside the user gesture, before any `await`** — an
 resume without another gesture.
 
 ```ts
-import { createPCMStreamPlayer } from "@mascotbot-sdk/lipsync-core";
-import { useLipsyncStream } from "@mascotbot-sdk/lipsync-react/rive";
+import { createPCMStreamPlayer } from "@mascotbot/core";
+import { useLipsyncStream } from "@mascotbot/react/rive";
 
 const player = createPCMStreamPlayer({ sampleRate: 24000 });
 

@@ -13,7 +13,7 @@ icon: "tower-broadcast"
 ---
 
 `createStreamingSession()` is the low-level streaming primitive on
-`MascotLipsyncClient`. You feed it fixed-size audio windows and it returns one
+`LipsyncClient`. You feed it fixed-size audio windows and it returns one
 viseme result per window. Most React apps should use
 [`useLipsyncStream`](/libraries/streaming-and-mic) instead — it owns the audio
 graph for you. Reach for the raw session when you control the audio source
@@ -54,7 +54,7 @@ audio-position in ms; the playback's animation-frame clock fires the viseme
 when its time arrives.
 
 ```ts
-import { MascotPlayback, getRiveInputs } from "@mascotbot-sdk/lipsync-core/rive";
+import { MascotPlayback, getRiveInputs } from "@mascotbot/core/rive";
 
 const playback = new MascotPlayback({ riveInputs: getRiveInputs(rive), stream: true, enableNaturalLipSync: true });
 playback.play();
