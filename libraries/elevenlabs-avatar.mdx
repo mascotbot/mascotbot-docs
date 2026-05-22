@@ -297,6 +297,54 @@ Mount the avatar small and fixed for an embeddable **AI agent with face**. The S
 
 Need a non-mouth input (a wave, a reveal)? Use `useMascotInputs().has(name)` then drive it yourself — [Rive co-existence](/concepts/rive-coexistence).
 
+#### Gestures on Every Agent Turn
+
+The legacy SDK auto-fired a `gesture` trigger at the start of every agent
+utterance (the old `gesture: true` flag on `useMascotElevenlabs`). 0.2.x
+removed the auto-fire — consumers wire it themselves. ElevenLabs makes
+this a one-liner: `Conversation.startSession` exposes an `onModeChange`
+callback that flips to `"speaking"` the moment the first audio chunk of
+a new turn lands.
+
+```tsx
+import { useRef } from "react";
+import { useMascotInputs } from "@mascotbot-sdk/lipsync-react/rive";
+
+function ElevenLabsAvatarWithGestures() {
+  // useMascotInputs() returns a fresh object every render — capture in a
+  // ref so the long-lived EL callback always reads the current handle.
+  const { custom } = useMascotInputs();
+  const customRef = useRef(custom);
+  customRef.current = custom;
+
+  const start = async () => {
+    const { signedUrl } = await (await fetch("/api/elevenlabs/signed-url", { method: "POST" })).json();
+    const { Conversation } = await import("@elevenlabs/client");
+    await Conversation.startSession({
+      signedUrl,
+      onModeChange: ({ mode }) => {
+        // Fires exactly once per agent turn start; stays silent on the
+        // "listening" back-edge so the gesture only plays as the agent
+        // begins speaking.
+        if (mode !== "speaking") return;
+        customRef.current?.gesture?.fire?.();
+      },
+      // ... your existing onConnect / onDisconnect / onError
+    });
+  };
+
+  return <button onClick={start}>Start conversation</button>;
+}
+```
+
+Declare `gesture` on the parent `<MascotClient inputs={["gesture", ...]}>`
+so the SDK exposes a real trigger handle. On `.riv` files without a
+`gesture` input the SDK returns a no-op shim, so the optional-chain
+`fire?.()` stays safe.
+
+For a provider-agnostic approach driven by the speech envelope (works
+identically for OpenAI / Gemini), see [Stress emphasis and gestures](/realtime/overview#stress-emphasis-and-gestures).
+
 ### Step 4: Dynamic Variables
 
 ElevenLabs **dynamic variables** personalize conversations at runtime. They are an ElevenLabs feature and are completely independent of the SDK — pass them straight to `Conversation.startSession`:
