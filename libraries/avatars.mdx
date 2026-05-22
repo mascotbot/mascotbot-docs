@@ -1,0 +1,198 @@
+---
+title: "Mascotbot Avatars API - Ready-Made Mascot .riv Distribution"
+sidebarTitle: "Avatars API"
+description: "A small public HTTP API that serves ready-made Mascotbot avatars as Rive .riv files plus per-version metadata. Fetch once, self-host, drive Rive from the metadata."
+icon: "face-smile"
+'og:title': 'Mascotbot Avatars API | Mascot Bot SDK'
+'og:description': 'List ready-made mascots, download the .riv, self-host, and drive Rive from the per-version metadata.'
+'og:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+'og:url': 'https://docs.mascot.bot/libraries/avatars'
+'twitter:title': 'Mascotbot Avatars API | Mascot Bot SDK'
+'twitter:description': 'List, download, and pin ready-made mascot .riv files.'
+'twitter:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+---
+
+A small public HTTP API that lists ready-made Mascotbot avatars (Rive `.riv`
+files) and serves their bytes plus per-version metadata. It is **not** an npm
+registry — just a manifest + binaries. Read access is **public**; no key
+required.
+
+The intended flow: fetch the `.riv` **once**, self-host it from your own
+CDN/origin, and drive Rive using the per-version metadata.
+
+- **Base URL:** `https://license.mascot.bot`
+
+## Concepts
+
+- **Avatar** — a mascot identified by an `id` (e.g. `notion-guy`), with one or
+  more **versions**.
+- **Version** — an immutable `(id, version)` pair where `version` is semver
+  `x.y.z`. The bytes for a published version never change; publishers ship
+  updates as new versions. Old versions are retained.
+- **`latest`** — the highest semver of an avatar. What `download` serves when
+  no version is requested.
+- **Metadata** — a freeform JSON object attached to each version, returned
+  verbatim. There is **no fixed schema** — different `.riv` files expose
+  different artboards, state machines, and inputs, so the shape is whatever
+  the publisher set. Mascotbot's own mascots mirror an `artboard` /
+  `stateMachine` / `customization` shape; treat any field as optional.
+
+## List avatars
+
+```http
+GET /v1/avatars
+```
+
+Returns the manifest. Response is `Cache-Control: public, max-age=60`; an
+empty pool is a valid `200` with `"avatars": []`.
+
+```jsonc
+{
+  "schema": 2,
+  "updatedAt": 1747000000000,
+  "avatars": [
+    {
+      "id": "notion-guy",
+      "name": "Notion Guy",
+      "description": null,
+      "latest": "1.0.0",
+      "metadata": { /* latest version's metadata, or null */ },
+      "downloadUrl": "https://license.mascot.bot/v1/avatars/notion-guy/download",
+      "versions": [
+        {
+          "version": "1.0.0",
+          "sha256": "651ab97684ea…",
+          "fileSize": 218080,
+          "createdAt": 1747000000000,
+          "metadata": { /* freeform, publisher-defined */ },
+          "downloadUrl": "https://license.mascot.bot/v1/avatars/notion-guy/download?version=1.0.0"
+        }
+      ]
+    }
+  ]
+}
+```
+
+## Download a `.riv`
+
+```http
+GET /v1/avatars/<id>/download              # serves `latest`
+GET /v1/avatars/<id>/download?version=1.0.0 # serves a pinned version
+```
+
+- `200` → the raw `.riv` (`application/octet-stream`,
+  `Content-Disposition: attachment`).
+- `X-Avatar-Version: <served version>` is set on every response.
+- A **pinned** `?version=` response is
+  `Cache-Control: public, max-age=31536000, immutable` — safe to cache
+  forever. The unversioned `latest` response is `max-age=300` (it can move
+  when a new version ships).
+- `HEAD` is supported.
+
+## Recommended integration pattern
+
+<Steps>
+  <Step title="Fetch the manifest once">
+    Poll on your own cadence (it changes only when a new version ships).
+  </Step>
+  <Step title="Pick the avatar + version">
+    Pin a `version` for reproducibility, or follow `latest` for auto-updates.
+  </Step>
+  <Step title="Download the .riv and self-host it">
+    Store it on your own CDN/origin keyed by `id@version` (or by `sha256`).
+    Pinned versions are immutable — you never need to re-fetch. Do **not**
+    serve `license.mascot.bot` to end users on every page load.
+  </Step>
+  <Step title="Drive Rive from the metadata">
+    The freeform `metadata` tells your renderer how to wire the file —
+    `artboard`, `stateMachine`, available inputs, customization controls.
+  </Step>
+</Steps>
+
+```ts
+const API = "https://license.mascot.bot";
+
+const manifest = await fetch(`${API}/v1/avatars`).then(r => r.json());
+const avatar   = manifest.avatars.find((a: any) => a.id === "notion-guy");
+const version  = avatar.latest; // or pin "1.0.0"
+
+// Download once → store on your own hosting.
+const riv = await fetch(
+  `${API}/v1/avatars/notion-guy/download?version=${version}`,
+).then(r => r.arrayBuffer());
+await myCdn.put(`mascots/notion-guy@${version}.riv`, riv);
+
+// Wire Rive from metadata (shape is publisher-defined).
+const md = avatar.metadata ?? {};
+new Rive({
+  src: `https://my-cdn/mascots/notion-guy@${version}.riv`,
+  artboard:      md.artboard,
+  stateMachines: md.stateMachine,
+  // md.customization → build your UI controls (type / min / max / default)
+});
+```
+
+In the React SDK, the same flow ends with passing your self-hosted URL to
+`<MascotClient src={…}>` and reading `md.artboard` / `md.stateMachine` from
+the manifest — see [Rive co-existence](/concepts/rive-coexistence) for the
+input-ownership contract.
+
+### Variants — same character, different `.riv`
+
+Some characters ship as **multiple avatars** because the standalone and
+embeddable-widget builds are genuinely different files with different Rive
+wiring. They are cross-linked in metadata and you pick the one matching how
+you render it:
+
+| `id` | use | artboard | stateMachine |
+|---|---|---|---|
+| `notion-guy` | standalone hosting | `Character` | `InLesson` |
+| `notion-guy-widget` | embeddable widget | `Widget` | `mascotStateMachine` |
+
+The metadata on each one carries the full customization schema for that
+variant; the API doesn't merge them.
+
+## Versioning
+
+A published `(id, version)` is **immutable** — to change an avatar, the
+publisher ships a **new version**, and clients that pinned the old one keep
+working unchanged. `latest` is the highest semver; clients that follow it get
+updates automatically, clients that pin a `version` are stable. Pinned
+download URLs are immutable and long-cached, so they are safe to bake into
+your own CDN keyed by `id@version` or `sha256`.
+
+## Errors
+
+JSON `{ "code": "...", "message": "..." }`:
+
+| Status | `code` | Meaning |
+|---|---|---|
+| 404 | `avatar_not_found` | no such `id` |
+| 404 | `version_not_found` | `id` exists, that `version` doesn't |
+| 404 | `avatar_binary_missing` | manifest entry exists but the binary is gone — report it |
+| 404 | `not_found` | unknown route |
+| 405 | `method_not_allowed` | non-`GET`/`HEAD` on a read route |
+| 500 | `manifest_corrupt` | server-side; surface a friendly retry |
+
+## Quick reference
+
+| | |
+|---|---|
+| List | `GET /v1/avatars` — public, 60 s cache |
+| Download latest | `GET /v1/avatars/<id>/download` |
+| Download pinned | `GET /v1/avatars/<id>/download?version=x.y.z` — immutable |
+| Base URL | `https://license.mascot.bot` |
+
+## Next
+
+<Columns cols={3}>
+  <Card title="Ready-made mascots" icon="face-smile" href="/mascots/ready-to-use-mascots">
+    The catalog of characters available through this API.
+  </Card>
+  <Card title="Rive co-existence" icon="puzzle-piece" href="/concepts/rive-coexistence">
+    The input-ownership contract once a `.riv` is rendered.
+  </Card>
+  <Card title="React SDK intro" icon="react" href="/libraries/react-sdk">
+    Wiring a downloaded `.riv` into `<MascotClient>`.
+  </Card>
+</Columns>

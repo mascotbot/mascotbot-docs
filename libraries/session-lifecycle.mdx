@@ -1,0 +1,201 @@
+---
+title: "Mascotbot Session Lifecycle - Refresh, Refused & Recovery"
+sidebarTitle: "Session lifecycle"
+description: "How a Mascotbot lipsync session moves through idle → initializing → ready → refused, what triggers the refusal, and the canonical recovery pattern using reload() — pre-check at the top of every action plus a RefusedError catch mid-flight."
+icon: "arrows-rotate"
+'og:title': 'Mascotbot Session Lifecycle | Mascot Bot SDK'
+'og:description': 'Refresh, refused, and the canonical recovery pattern — reload() in front of every action, plus a RefusedError catch for mid-flight cutoffs.'
+'og:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+'og:url': 'https://docs.mascot.bot/libraries/session-lifecycle'
+'twitter:title': 'Mascotbot Session Lifecycle | Mascot Bot SDK'
+'twitter:description': 'The status state machine + the canonical recovery pattern using reload().'
+'twitter:image': 'https://mascotbot-app.s3.amazonaws.com/rive-assets/og_assets/mascotbot_og.png'
+---
+
+After `<LipsyncProvider>` (or `MascotLipsyncClient.init()`) the SDK runs an
+authenticated refresh loop in the background — it keeps the inference engine
+licensed without you doing anything. Almost always you ignore this and treat
+`status === "ready"` as the only check you need.
+
+The case worth a page is the rare **terminal cutoff**. If too many refresh
+requests fail in a tight burst (laptop sleep, a long-backgrounded mobile tab,
+a real network outage), the session moves to `"refused"` and **stays there** —
+no automatic retry. Recovery is one call: `reload()`.
+
+## The status state machine
+
+`useLipsync()` exposes one value, `status`:
+
+| Value | Means | Audio work allowed? |
+|---|---|---|
+| `idle` | Provider hasn't started initialization yet (e.g. `lazy`) | No |
+| `initializing` | License handshake in flight | No |
+| `ready` | Licensed; engine warm | Yes |
+| `running` | Currently inferring on a frame | Yes |
+| `degraded` | Soft signal from the engine; still usable | Yes |
+| `refused` | **Terminal cutoff** — recover with `reload()` | No |
+| `error` | Init itself failed (bad key, network down at boot) — recover with `reload()` after fixing the cause | No |
+
+`"refused"` and `"error"` are the two states that need active recovery. The
+others either advance on their own or simply mean "don't push audio yet."
+
+## What triggers `"refused"`
+
+The refresh loop poisons the session after a small burst of consecutive
+refresh failures in a short window. The common real-world triggers are all
+**network-suppression-shaped** events:
+
+- A laptop closed mid-session and reopened minutes later.
+- A mobile browser tab backgrounded long enough for the OS to throttle timers
+  and pause fetches.
+- A device losing connectivity entirely (subway, elevator, plane).
+- An aggressive ad-blocker / privacy extension that started intercepting the
+  refresh endpoint.
+
+These are normal user behavior — the SDK has no way to distinguish them from
+a hostile network shim, so the fail-closed move is the same: stop and surface.
+
+A typed [`RefusedError`](/reference/error-codes) is fired on the client's
+`"refused"` event. The React Provider listens for it and flips
+`status → "refused"`, and any subsequent `processAudio()` / `pushWindow()`
+throws the same `RefusedError`.
+
+## The canonical recovery pattern (React)
+
+Use **both** legs together. The pre-check covers "the cutoff already
+happened, the user is clicking again"; the catch covers "the cutoff fires
+**while** this call is in flight."
+
+```tsx
+"use client";
+import { useCallback } from "react";
+import { useLipsync, RefusedError } from "@mascotbot-sdk/lipsync-react";
+
+function SpeakButton() {
+  const { client, status, reload } = useLipsync();
+
+  const speak = useCallback(async (audio: Float32Array) => {
+    // (1) Pre-check: the Provider is already "refused" from a prior cutoff.
+    //     Kick off re-init and bail. The user's NEXT click runs on a fresh
+    //     client — no separate "Reconnect" button needed.
+    if (status === "refused") {
+      reload();
+      return;
+    }
+    if (!client || status !== "ready") return;
+
+    try {
+      const result = await client.processAudio(audio);
+      // …setTimeline / play…
+    } catch (err) {
+      // (2) Mid-flight cutoff: the refresh budget burned WHILE this call was
+      //     in flight. Same recovery — reload() and let the next click run
+      //     on the fresh client.
+      if (err instanceof RefusedError) {
+        reload();
+        return;
+      }
+      throw err;
+    }
+  }, [client, status, reload]);
+
+  return <button onClick={() => speak(/* … */)}>Speak</button>;
+}
+```
+
+That's the whole pattern. Copy it into every action that touches `client.*`.
+
+<Tip>
+**Don't block-and-wait inside the click.** `reload()` returns immediately and
+re-initializes asynchronously; the user's next click runs on the new client
+with a normal spinner. A `await initReady` inside the handler makes the first
+post-cutoff tap feel laggy without adding anything.
+</Tip>
+
+### Why `reload()` instead of "just retry"
+
+`reload()` tears the client down and runs `MascotLipsyncClient.init()` again —
+a fresh license, a fresh refresh chain, fresh in-memory state. A naive retry
+of `processAudio()` would just hit the same poisoned session. There is no
+"un-refuse" API; re-init is the recovery, and that's what `reload()` does.
+
+`reload()` is also the right move for `status === "error"` once you've fixed
+the underlying cause (e.g. the user pasted a valid key after seeing
+`invalid_api_key`).
+
+## Vanilla equivalent
+
+Outside React, listen on the client and recreate it the same way:
+
+```ts
+import { MascotLipsyncClient, RefusedError } from "@mascotbot-sdk/lipsync-core";
+
+let client = await MascotLipsyncClient.init({ apiKey: "mascot_pub_…" });
+
+function wire(c: MascotLipsyncClient) {
+  c.on("refused", async (_err) => {
+    await c.close();
+    client = await MascotLipsyncClient.init({ apiKey: "mascot_pub_…" });
+    wire(client);
+  });
+}
+wire(client);
+
+async function speak(audio: Float32Array) {
+  try {
+    return await client.processAudio(audio);
+  } catch (err) {
+    if (err instanceof RefusedError) {
+      // The "refused" listener above is already re-initing; the next call
+      // will land on the fresh client. Decide whether to retry now or on
+      // the next user action.
+      return null;
+    }
+    throw err;
+  }
+}
+```
+
+The available events are `"ready" | "refused" | "error" | "refresh"`
+([API conventions](/reference/api-conventions#1-events-vs-callbacks)). For
+recovery you only need `"refused"`.
+
+## Tell the user what happened
+
+Reading `useLipsync().error` gives you the typed cause when `status` is
+`"refused"` or `"error"`. Branch on `error.code`, not the class — that's the
+stable surface and the full code matrix lives in
+[Error codes](/reference/error-codes). For `RefusedError` in particular, the
+codes that map to "show a clear next step" UI are listed in that page's
+[branching example](/reference/error-codes#authorization-codes).
+
+For a plain network/sleep cutoff the user only needs to see "session
+expired — tap to continue"; the pre-check inside your action handler already
+does the rest on the next tap.
+
+## Background tabs and mobile sleep — the practical caveat
+
+Most "the avatar stopped working when I came back" reports are not bugs —
+they're the device pausing the refresh loop long enough for the cutoff to
+fire. Two things make this a non-issue:
+
+1. The recovery pattern above turns the next tap into a re-init. Users
+   experience one slightly slower click, not a broken page.
+2. If you can tell when the page becomes visible again (e.g.
+   `document.visibilityState`), call `reload()` proactively so the session is
+   warm before the user interacts. This is optional — the recovery pattern
+   is already correct without it.
+
+## Next
+
+<Columns cols={3}>
+  <Card title="Error codes" icon="triangle-exclamation" href="/reference/error-codes">
+    The full `RefusedError.code` matrix and recommended UI per code.
+  </Card>
+  <Card title="React hooks" icon="react" href="/libraries/react-hooks">
+    `useLipsync` — the `status` / `error` / `reload` surface.
+  </Card>
+  <Card title="API conventions" icon="ruler-combined" href="/reference/api-conventions">
+    Events vs callbacks, the error taxonomy, module boundaries.
+  </Card>
+</Columns>
