@@ -66,6 +66,68 @@ recreate. A frozen mouth during a call is almost always one of:
 - **Wrong `source` shape** — `{ kind: "mediaStream", stream }` where
   `stream` is `null` or has only ended tracks.
 
+## Call disconnects immediately after `onConnect` (`reason: 'user'`)
+
+Symptom: `Conversation.startSession({ ... })` resolves, your `onConnect`
+fires, the agent's `first_message` may even reach `onMessage`, then
+`onStatusChange` flips to `disconnecting` → `disconnected` and
+`onDisconnect` runs with `details === { reason: 'user' }`. There's no
+network error, no `onError`, no server-side disconnect — **your own code
+called `endSession()`**.
+
+The usual cause is an unmount-cleanup effect whose dep array contains a
+`teardown` callback whose **identity flips on every render**:
+
+```tsx
+// BUG — re-runs the cleanup on EVERY render, not just unmount.
+const teardown = useCallback(() => {
+  void convoRef.current?.endSession().catch(() => {});
+  // …other resource releases
+}, [setSomeMascotInput]);                  // ← unstable dep
+
+useEffect(() => () => teardown(), [teardown]);
+```
+
+`setSomeMascotInput` typically traces back to handles returned by
+`useMascotInputs()` (which intentionally return a **fresh `{ custom, has }`
+object per render** — see [Rive co-existence](/concepts/rive-coexistence)).
+Each fresh handle → new `useCallback` chain → new `teardown` identity →
+the cleanup runs, which calls `endSession()`, which surfaces as a
+`'user'` disconnect right after `onConnect`.
+
+Fix — stabilise the unmount cleanup with a ref so it runs **once on
+unmount only**, while always invoking the latest `teardown` closure:
+
+```tsx
+const teardownRef = useRef(teardown);
+teardownRef.current = teardown;          // refresh every render, no deps
+useEffect(() => () => teardownRef.current?.(), []);   // [] — true unmount
+```
+
+This pattern is correct regardless of how often `teardown`'s identity
+changes; the ref always points at the latest closure when the component
+finally unmounts. Apply the same shape to any other long-lived cleanup
+that depends on hook handles which are fresh-per-render
+(`useMascotInputs`, `useMascotRive` — see also the
+[ElevenLabs onModeChange recipe](/libraries/elevenlabs-avatar#gestures-on-every-agent-turn)
+which captures `custom` in a ref for the same reason).
+
+How to diagnose: temporarily log the disconnect detail and any frames so
+you can distinguish a self-end from an agent/server end:
+
+```tsx
+await Conversation.startSession({
+  signedUrl,
+  onMessage:      (m) => console.log("[debug] msg:", m),
+  onStatusChange: (s) => console.log("[debug] status:", s.status),
+  onDisconnect:   (d) => console.log("[debug] disconnect reason:", d),
+  // …
+});
+```
+
+`reason: 'user'` is your code; `reason: 'agent'` is the agent stopping
+the call; any `onError` first means a server-side problem.
+
 ## Mouth flickers when speech stops
 
 This is handled by the SDK's internal **−50 dBFS silence gate** — do **not**
