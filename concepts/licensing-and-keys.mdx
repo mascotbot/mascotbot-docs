@@ -14,16 +14,16 @@ icon: "key"
 
 Authentication uses a Mascotbot license key (`mascot_…`). Every session is
 authorized by the Mascotbot edge service, which also delivers the licensed
-model and the mascot / voice assets. Speech is processed by the SDK in the
-user's browser — it isn't sent to or stored on Mascotbot servers; only
-licensing, model/asset delivery, and usage metering use the network.
+model and the mascot / voice assets. Lipsync runs in realtime with no audio
+roundtrip — only licensing, model/asset delivery, and usage metering use the
+network.
 
 ## Key environments
 
-| Prefix | Valid origins | Metering | Tamper detection |
-|---|---|---|---|
-| `mascot_dev_…` | `localhost`, `*.localhost`, `127.0.0.1`, private networks only | Development meters — no billing | Tolerated — local probing will not poison your session |
-| `mascot_pub_…` | Your registered, allow-listed public domains | Production meters | Active |
+| Prefix | Valid origins | Metering |
+|---|---|---|
+| `mascot_dev_…` | `localhost`, `*.localhost`, `127.0.0.1`, private networks only | Development meters — no billing |
+| `mascot_pub_…` | Your registered, allow-listed public domains | Production meters |
 
 The pairing is enforced server-side and is intentionally strict:
 
@@ -70,17 +70,8 @@ plan:
   `processAudio()` and streaming sessions report `speechMs` (non-silent
   milliseconds); a persisted [`VisemeTimeline`](/concepts/visemes-and-timeline)
   carries `speechMs`, so replaying a stored timeline does not re-meter.
-- **Monthly active users (MAU)** — higher plans bill by MAU. Pass a stable
-  `userId` so each user attributes correctly across sessions and devices.
-
-```tsx
-<MascotProvider apiKey="mascot_pub_…" userId={authedUser?.id}>
-  {children}
-</MascotProvider>
-```
-
-Set `userId` regardless of plan — it keeps both metering and your usage
-analytics accurate.
+- **Monthly active users (MAU)** — higher plans bill by MAU, attributed
+  automatically per session.
 
 ## What your plan includes
 
